@@ -106,7 +106,6 @@ function ProcessMIDI() {
         // if it's the next beat now
         if (Math.floor(currentBeat) > prevBeat) {
           // reset noteCount
-          Trace("next beat " + currentBeat);
           noteCount = 0;
           prevBeat = currentBeat;
         }
@@ -114,8 +113,15 @@ function ProcessMIDI() {
         noteSendDelay = getRandomFromArray(offsets);
         var noteTime = currentBeat + noteSendDelay;
 
+        // if noteTime is downbeat, move later
+        var currentTime = info.blockStartBeat;
+        if (noteTime < currentTime) {
+          noteTime = currentTime + 0.001;
+        }
+
         // send note
         noteToSend.sendAtBeat(noteTime);
+        Trace("current time " + info.blockStartBeat);
         Trace("note time " + noteTime);
 
         // remove position
