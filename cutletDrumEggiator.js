@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// Harpeggiator
+// CutletDrumEggiator
 //--------------------------------------------------------------------------------------------------
 
 /* notes are generated in ProcessMIDI, and HandleMIDI only updates the note array (which is 
@@ -13,51 +13,13 @@ var NeedsTimingInfo = true;
 
 activeNotes = [];
 
-// index for the to-be-sent note.
-var currPtr = 0;
-
-// octave shifting value for the to-be-sent note.
-var currOct = 0;
-
-// time delay value for the to-be-sent note.
-var noteSendDelay = 0;
-
-/* a counter recording how many notes are sent. This is used to compute the noteSendDelay 
-   when an accelerando is involved, and control the moving direction of currPtr.*/
-var totalNoteSent = 0;
-
-/* either 1 or -1, where 1 means the currPtr is moving right, 
- and -1 means it is moving left.*/
-var direction = 0;
-
-// standard flam value computed in initializeCursor().
-var stdFlam = 0;
-
-// the octave value directly read from the octave slider on the panel.
-var octave = 0;
-
-// the start time of sending the first note, set in initializeCursor().
-var timerStartTime = 0;
-
-//tracks the current channel pressure value
-var currentPressure = 0;
-
-/* the total number of notes that should be sent before changing the pointer moving direction.*/
-var maximumNotesToSend = 0;
-
-// reset before each note is sent
-randomTimeShift = 0;
-
-// to make it sound more like real person
-maxRandomTimeShift = 0;
-
 var offsets = [];
 
 var noteCount = 0;
 
 var splicing = false;
 
-var prevBeat = null;
+var prevBeat = 0;
 
 var currentBeat = null;
 
@@ -108,139 +70,81 @@ function getOffsets() {
 function ProcessMIDI() {
   //Trace(GetTimingInfo().blockStartBeat)
 
-  // if it is time to send out the note
-  if (activeNotes.length != 0) {
-    randomTimeShift = 0;
+  const info = GetTimingInfo();
 
-    if (activeNotes.length > 0) {
-      //generate and send out the note -------------------------------------------------------------
+  // check for playing
+  if (!info.playing) {
+    MIDI.allNotesOff();
+    Reset();
+    return;
+  }
 
-      /*** GET RANDOM NOTE ***/
-      noteToSend = new NoteOn(getRandomFromArray(activeNotes));
-
-      if (noteToSend.pitch <= 127 && noteToSend.pitch >= 0) {
-        // the value 16 in the line below is a scalor and is arbiturary
-        velocitySubtractor = Math.round(
-          (GetParameter("Diminuendo") * totalNoteSent) / 16
-        );
-
-        //if "Velocity Follows Aftertouch" is set to on
-        if (GetParameter("Velocity Follows Aftertouch") == 0) {
-          //use pressure to define velocity
-          noteToSend.velocity = MIDI.normalizeData(
-            currentPressure - velocitySubtractor
-          );
-        } else {
-          //use played velocity
-          noteToSend.velocity = MIDI.normalizeData(
-            noteToSend.velocity - velocitySubtractor
-          );
-        }
-
-        // if noteCount > GetParameter("Note Count"), don't play
-        // if Math.floor(beat) > prevBeat, reset noteCount to zero
-        // play notes, increment counter
-        // otherwise, if noteCount < count, play note and increment count
-
-        // if finished playing the notes
-        if (noteCount == GetParameter("Note Count")) {
-          currentBeat = GetTimingInfo().blockStartBeat;
-          offsets = getOffsets();
-          // if it's the next beat now
-          if (Math.floor(currentBeat) > prevBeat) {
-            // reset noteCount
-            noteCount = 0;
-            prevBeat = currentBeat;
-          }
-        } else {
-          //currentBeat = GetTimingInfo().blockStartBeat;
-
-          prevBeat = currentBeat;
-          noteSendDelay = getRandomFromArray(offsets);
-          //noteToSend.sendAfterMilliseconds(noteSendDelay);
-          noteToSend.beatPos = currentBeat + noteSendDelay;
-          Trace("current beat" + currentBeat);
-          Trace("beatPos " + noteToSend.beatPos);
-          noteToSend.send();
-          const offsetToRemove = offsets.indexOf(noteSendDelay);
-          offsets.splice(offsetToRemove, 1);
-          noteCount += 1;
-        }
-
-        /**
-        if (noteCount == GetParameter("Note Count")) {
-          offsets = getOffsets();
-        }**/
-
-        noteOffToSend = new NoteOff(noteToSend);
-        noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
-      }
-
-      //update controller variables ----------------------------------------------------------------
-      notesSentInCurrOct =
-        octave >= 0 ? currPtr : activeNotes.length - currPtr - 1;
-      signOfOctave = octave == 0 ? 1 : Math.sign(octave);
-      totalNoteSent =
-        currOct * signOfOctave * activeNotes.length + notesSentInCurrOct;
-
-      noteSendDelaySubtractor = totalNoteSent * GetParameter("Accelerando");
-
-      //noteSendDelay = 0;
-
-      currPtr = currPtr + direction;
-      if (currPtr >= activeNotes.length || currPtr < 0) {
-        currPtr = direction >= 0 ? 0 : activeNotes.length - 1;
-        currOct += direction;
-      }
-    } else {
-      // currPtr is out of bound due to whatever reason.
-      currPtr = activeNotes.length - 1;
+  // check for cyling
+  if (info.cycling) {
+    if (Math.floor(info.blockStartBeat) == info.leftCycleBeat) {
+      Reset();
     }
+  }
 
-    // test and change direction -------------------------------------------------------------------
-    if (totalNoteSent >= maximumNotesToSend - 1 || totalNoteSent <= 1) {
-      octaveMultiplier = octave == 0 ? 1 : octave;
-      if (
-        (octaveMultiplier * direction > 0 &&
-          totalNoteSent >= maximumNotesToSend - 1) ||
-        (octaveMultiplier * direction < 0 && totalNoteSent <= 1)
-      ) {
-        direction *= -1;
+  if (activeNotes.length > 0) {
+    //generate and send out the note -------------------------------------------------------------
+
+    // get random note
+    noteToSend = new NoteOn(getRandomFromArray(activeNotes));
+
+    // if note is valid
+    if (noteToSend.pitch <= 127 && noteToSend.pitch >= 0) {
+      /*** WHICH BEAT ***/
+
+      // if noteCount notes have already been played
+      if (noteCount == GetParameter("Note Count")) {
+        // reset currentBeat to block start beat
+        currentBeat = GetTimingInfo().blockStartBeat;
+        // reset offseets array
+        offsets = getOffsets();
+
+        // if it's the next beat now
+        if (Math.floor(currentBeat) > prevBeat) {
+          // reset noteCount
+          Trace("next beat " + currentBeat);
+          noteCount = 0;
+          prevBeat = currentBeat;
+        }
+      } else if (noteCount < GetParameter("Note Count")) {
+        noteSendDelay = getRandomFromArray(offsets);
+        var noteTime = currentBeat + noteSendDelay;
+
+        // send note
+        noteToSend.sendAtBeat(noteTime);
+        Trace("note time " + noteTime);
+
+        // remove position
+        const offsetToRemove = offsets.indexOf(noteSendDelay);
+        offsets.splice(offsetToRemove, 1);
+
+        // increment noteCount
+        noteCount += 1;
+
+        prevBeat = currentBeat;
       }
-    } //end test and change direction
-  } //end time to send out note
+      /*** END WHICH BEAT ***/
+
+      noteOffToSend = new NoteOff(noteToSend);
+      noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
+    }
+  } else {
+    console.log("activeNotes empty");
+  }
 } //ProcessMIDI
 
 //**************************************************************************************************
 function HandleMIDI(note) {
   var info = GetTimingInfo();
-  currentBeat = info.blockStartBeat;
+  currentBeat = Math.ceil(info.blockStartBeat);
   /* if a note on is received, add the note in activeNotes[] and re-initialized the cursor, and 
       update the maximumNotesToSend --------------------------------------------------------------*/
   if (note instanceof NoteOn) {
     activeNotes.push(note);
-    octave = GetParameter("Octave");
-    if (activeNotes.length == 1) {
-      initializeCursor(info);
-    }
-
-    /**** CUTLET CHANGE ****/
-    //maximumNotesToSend = (Math.abs(octave) + 1) * activeNotes.length;
-    maximumNotesToSend = 1;
-
-    //set current pressure to current played velocity
-    currentPressure = note.data2;
-  }
-
-  /* get ChannelPressure. If it is less than the min value set in the "Minimum Aftertouch", set it 
-     to the minimum value. -----------------------------------------------------------------------*/
-  if (note instanceof ChannelPressure) {
-    currentPressure = note.value;
-
-    var minAfterTouch = GetParameter("Minimum Aftertouch");
-    if (currentPressure < minAfterTouch) {
-      currentPressure = minAfterTouch;
-    }
   }
 
   /* note off message removes the off-ed note from activeNotes, and clears all the controller 
@@ -249,30 +153,17 @@ function HandleMIDI(note) {
     for (var i in activeNotes) {
       if (activeNotes[i].pitch == note.pitch) {
         activeNotes.splice(i, 1);
-        maximumNotesToSend = (Math.abs(octave) + 1) * activeNotes.length;
+        //maximumNotesToSend = (Math.abs(octave) + 1) * activeNotes.length;
       }
     }
-    /**if (activeNotes.length == 0) {
-      note.send();
-      noteSendDelay = 0;
-      stdFlam = 0;
-      currPtr = 0;
-      currOct = 0;
-      totalNoteSent = 0;
-      octave = 0;
-      timerStartTime = 0;
-      direction = 0;
-    }**/
-  }
-
-  //------------------------------------------------------------------------------------------------
-  if (!(note instanceof Note || note instanceof ChannelPressure)) {
-    note.send();
   }
 }
 
 //**************************************************************************************************
-function Reset() {}
+function Reset() {
+  noteCount = 0;
+  activeNotes = [];
+}
 
 //**************************************************************************************************
 function ParameterChanged(param, value) {
@@ -281,12 +172,6 @@ function ParameterChanged(param, value) {
     var info = GetTimingInfo();
     stdFlam = 60000 / info.tempo / GetParameter("Beat Division");
     offsets = getOffsets();
-  }
-
-  //if Octave slider is moved ----------------------------------------------------------------------
-  if (param == 2) {
-    octave = GetParameter("Octave");
-    maximumNotesToSend = (Math.abs(octave) + 1) * activeNotes.length;
   }
 }
 
