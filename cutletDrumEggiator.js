@@ -81,7 +81,11 @@ function ProcessMIDI() {
 
   // check for cyling
   if (info.cycling) {
-    if (Math.floor(info.blockStartBeat) == info.leftCycleBeat) {
+    // if at cycle beginning
+    var distanceFromCycleStart = info.blockStartBeat - info.leftCycleBeat;
+    if (distanceFromCycleStart < 0.01) {
+      currentBeat = info.leftCycleBeat;
+      Trace(distanceFromCycleStart);
       Reset();
     }
   }
@@ -121,8 +125,8 @@ function ProcessMIDI() {
 
         // send note
         noteToSend.sendAtBeat(noteTime);
-        Trace("current time " + info.blockStartBeat);
-        Trace("note time " + noteTime);
+        //Trace("current time " + info.blockStartBeat);
+        //Trace("note time " + noteTime);
 
         // remove position
         const offsetToRemove = offsets.indexOf(noteSendDelay);
@@ -168,7 +172,7 @@ function HandleMIDI(note) {
 //**************************************************************************************************
 function Reset() {
   noteCount = 0;
-  activeNotes = [];
+  //activeNotes = [];
 }
 
 //**************************************************************************************************
