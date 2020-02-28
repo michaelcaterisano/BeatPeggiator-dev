@@ -3,57 +3,52 @@
 //--------------------------------------------------------------------------------------------------
 
 /* notes are generated in ProcessMIDI, and HandleMIDI only updates the note array (which is 
-   activeNotes[]) and triggers pointer/cursor initialization. ParameterChanged is called when a 
-   slider is moved. If it is the octave slider octave and maximumNotesToSend are updated. If it is 
-   the note division slider, stdFlam is updated.
+   activeNotes[]). ParameterChanged is called when a 
+   slider is moved.
 */
 
 //set this flag to true, to access the host timing info
 var NeedsTimingInfo = true;
 
-activeNotes = [];
+// array that will hold currently active MIDI notes
+var activeNotes = [];
 
+// array that will hold offset amounts, or 1 / beatDivision
 var offsets = [];
 
+// variable to track how many notes have been played
 var noteCount = 0;
 
-var splicing = false;
-
+// variable to track the previous beat
 var prevBeat = 0;
 
+// variable to track the current beat
 var currentBeat = null;
 
-//**************************************************************************************************
-function dateNow() {
-  // extract timing infos
-  var timingInfo = GetTimingInfo();
-
-  // convert beat position to ms
-  return Math.round(timingInfo.blockStartBeat * (60000 / timingInfo.tempo));
-} // /dateNow
-
 //*************************************************************************************************
+// returns a random number with in a range min-max
 function getRandomInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
 //**************************************************************************************************
+// returns a random item from an array
 function getRandomFromArray(arr) {
+  if (arr.length === 0) {
+    return null;
+  }
   var max = arr.length - 1;
   var index = getRandomInRange(0, max);
   return arr[index];
 } // getRandomFromArray
 
 //**************************************************************************************************
+// returns array of offset amounts
 function getOffsets() {
-  const info = GetTimingInfo();
-  const beat_ms = 60000 / info.tempo;
-
   // get subdivisions
   var beatDivision = GetParameter("Beat Division");
 
   // calculate offsets
-  //var offset = beat_ms / beatDivision;
   var offset = 1 / beatDivision;
   var value = 0;
   var result = [];
@@ -62,30 +57,32 @@ function getOffsets() {
     value += offset;
   }
 
-  // return array of offset floats,,
+  // return array of offset floats,
   return result;
 }
 
 //**************************************************************************************************
 function ProcessMIDI() {
-  //Trace(GetTimingInfo().blockStartBeat)
-
+  // get timing info
   const info = GetTimingInfo();
 
   // check for playing
   if (!info.playing) {
+    // cancel all midi notes
     MIDI.allNotesOff();
     Reset();
     return;
   }
 
-  // check for cyling
+  // if cycling
   if (info.cycling) {
     // if at cycle beginning
     var distanceFromCycleStart = info.blockStartBeat - info.leftCycleBeat;
+    // check that blockStartBeat is very close to leftCycle position
     if (distanceFromCycleStart < 0.01) {
+      // update currentBeat to left cycle beat
       currentBeat = info.leftCycleBeat;
-      Trace(distanceFromCycleStart);
+
       Reset();
     }
   }
@@ -98,10 +95,9 @@ function ProcessMIDI() {
 
     // if note is valid
     if (noteToSend.pitch <= 127 && noteToSend.pitch >= 0) {
-      /*** WHICH BEAT ***/
-
+      // play noteCount number of notes per beat -------------------------------------------------------------
       // if noteCount notes have already been played
-      if (noteCount == GetParameter("Note Count")) {
+      if (noteCount == GetParameter("Notes Per Beat")) {
         // reset currentBeat to block start beat
         currentBeat = GetTimingInfo().blockStartBeat;
         // reset offseets array
@@ -113,7 +109,7 @@ function ProcessMIDI() {
           noteCount = 0;
           prevBeat = currentBeat;
         }
-      } else if (noteCount < GetParameter("Note Count")) {
+      } else if (noteCount < GetParameter("Notes Per Beat")) {
         noteSendDelay = getRandomFromArray(offsets);
         var noteTime = currentBeat + noteSendDelay;
 
@@ -125,20 +121,18 @@ function ProcessMIDI() {
 
         // send note
         noteToSend.sendAtBeat(noteTime);
-        //Trace("current time " + info.blockStartBeat);
-        //Trace("note time " + noteTime);
 
-        // remove position
+        // remove offest from options
         const offsetToRemove = offsets.indexOf(noteSendDelay);
         offsets.splice(offsetToRemove, 1);
 
         // increment noteCount
         noteCount += 1;
-
+        // update prevBeat to current beat
         prevBeat = currentBeat;
-      }
-      /*** END WHICH BEAT ***/
+      } // end sending notes
 
+      // create noteOff events
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
     }
@@ -186,43 +180,9 @@ function ParameterChanged(param, value) {
 }
 
 //**************************************************************************************************
-// initialization of new elements in the controller variable arrays
-initializeCursor = function(info) {
-  noteSendDelay = 0;
-  stdFlam = 60000 / info.tempo / GetParameter("Beat Division");
-  currOct = 0;
-  totalNoteSent = 0;
-  currPtr = octave < 0 ? activeNotes.length - 1 : 0;
-  timerStartTime = dateNow();
-  direction = octave == 0 ? 1 : Math.sign(octave);
-};
-
-//**************************************************************************************************
-Math.sign = function(num) {
-  if (num > 0) return 1;
-  if (num == 0) return 0;
-  if (num < 0) return -1;
-};
-
-function sortByPitchAscending(a, b) {
-  if (a.pitch < b.pitch) return -1;
-  if (a.pitch > b.pitch) return 1;
-  return 0;
-}
-
-//**************************************************************************************************
 //define the UI controls here
 
 var PluginParameters = [
-  {
-    name: "Note Length",
-    type: "lin",
-    unit: "ms",
-    minValue: 0.0,
-    maxValue: 8000.0,
-    numberOfSteps: 800,
-    defaultValue: 500.0
-  },
   {
     name: "Beat Division",
     type: "lin",
@@ -232,7 +192,7 @@ var PluginParameters = [
     defaultValue: 8
   },
   {
-    name: "Note Count",
+    name: "Notes Per Beat",
     type: "lin",
     minValue: 1,
     maxValue: 8,
@@ -240,42 +200,12 @@ var PluginParameters = [
     defaultValue: 2
   },
   {
-    name: "Octave",
+    name: "Note Length",
     type: "lin",
-    minValue: -10,
-    maxValue: 10,
-    numberOfSteps: 20,
-    defaultValue: 2
-  },
-  {
-    name: "Accelerando",
-    type: "lin",
-    minValue: -100,
-    maxValue: 10,
-    numberOfSteps: 110,
-    defaultValue: -5
-  },
-  {
-    name: "Diminuendo",
-    type: "lin",
-    minValue: -127,
-    maxValue: 127,
-    numberOfSteps: 254,
-    defaultValue: 32
-  },
-  {
-    name: "Velocity Follows Aftertouch",
-    type: "menu",
-    valueStrings: ["On", "Off"],
-    numberOfSteps: 2,
-    defaultValue: 1
-  },
-  {
-    name: "Minimum Aftertouch",
-    type: "lin",
-    minValue: 0,
-    maxValue: 127,
-    numberOfSteps: 127,
-    defaultValue: 40
+    unit: "ms",
+    minValue: 0.0,
+    maxValue: 8000.0,
+    numberOfSteps: 800,
+    defaultValue: 500.0
   }
 ];
