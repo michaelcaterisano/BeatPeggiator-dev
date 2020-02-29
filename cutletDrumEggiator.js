@@ -57,7 +57,7 @@ function getOffsets() {
     value += offset;
   }
 
-  // return array of offset floats,
+  // return array of offset floats
   return result;
 }
 
@@ -66,7 +66,7 @@ function ProcessMIDI() {
   // get timing info
   const info = GetTimingInfo();
 
-  // check for playing
+  // check for stop
   if (!info.playing) {
     // cancel all midi notes
     MIDI.allNotesOff();
@@ -74,7 +74,7 @@ function ProcessMIDI() {
     return;
   }
 
-  // if cycling
+  // adjust for cycle
   if (info.cycling) {
     // if at cycle beginning
     var distanceFromCycleStart = info.blockStartBeat - info.leftCycleBeat;
@@ -83,7 +83,7 @@ function ProcessMIDI() {
       // update currentBeat to left cycle beat
       currentBeat = info.leftCycleBeat;
 
-      Reset();
+      //Reset();
     }
   }
 
@@ -116,6 +116,7 @@ function ProcessMIDI() {
         // if noteTime is downbeat, move later
         var currentTime = info.blockStartBeat;
         if (noteTime < currentTime) {
+          Trace("downbeat");
           noteTime = currentTime + 0.001;
         }
 
@@ -128,6 +129,7 @@ function ProcessMIDI() {
 
         // increment noteCount
         noteCount += 1;
+        Trace(noteCount);
         // update prevBeat to current beat
         prevBeat = currentBeat;
       } // end sending notes
@@ -172,9 +174,9 @@ function Reset() {
 //**************************************************************************************************
 function ParameterChanged(param, value) {
   //if beat division slider is moved ---------------------------------------------------------------
-  if (param == 1) {
+  if (param == 0) {
     var info = GetTimingInfo();
-    stdFlam = 60000 / info.tempo / GetParameter("Beat Division");
+    //stdFlam = 60000 / info.tempo / GetParameter("Beat Division");
     offsets = getOffsets();
   }
 }
