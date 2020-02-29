@@ -78,12 +78,9 @@ function ProcessMIDI() {
   if (info.cycling) {
     // if at cycle beginning
     var distanceFromCycleStart = info.blockStartBeat - info.leftCycleBeat;
-    // check that blockStartBeat is very close to leftCycle position
-    if (distanceFromCycleStart < 0.01) {
-      // update currentBeat to left cycle beat
+    if (distanceFromCycleStart < 0.005 && distanceFromCycleStart > 0) {
       currentBeat = info.leftCycleBeat;
-
-      //Reset();
+      Reset();
     }
   }
 
@@ -116,7 +113,6 @@ function ProcessMIDI() {
         // if noteTime is downbeat, move later
         var currentTime = info.blockStartBeat;
         if (noteTime < currentTime) {
-          Trace("downbeat");
           noteTime = currentTime + 0.001;
         }
 
