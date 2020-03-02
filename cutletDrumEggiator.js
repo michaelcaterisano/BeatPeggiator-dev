@@ -107,7 +107,7 @@ function isCycleEnd() {
   if (info.cycling) {
     var distanceFromCycleEnd = info.rightCycleBeat - info.blockStartBeat;
     if (distanceFromCycleEnd < 0.01) {
-      //MIDI.allNotesOff();
+      allNotesOff();
       Trace("cycle end", info.blockStartBeat);
       return true;
     } else {
@@ -237,6 +237,7 @@ function ParameterChanged(param, value) {
   }
   if (param == 1) {
     if (value > beatDivision) {
+      Trace("here");
       SetParameter(0, value);
       notesPerBeat = value;
       notesPlayed = 0;
