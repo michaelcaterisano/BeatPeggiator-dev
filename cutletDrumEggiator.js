@@ -236,7 +236,6 @@ function ParameterChanged(param, value) {
     offsets = getOffsets();
   }
   if (param == 1) {
-    // don't allow notesPerBeat to be greater than Beat Division
     if (value > beatDivision) {
       SetParameter(0, value);
       notesPerBeat = value;
