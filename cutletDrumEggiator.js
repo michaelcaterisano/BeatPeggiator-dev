@@ -96,8 +96,8 @@ function getCurrentBeat(beatPosition) {
 
   return result;
 }
-//**************************************************************************************************
-function allNotesOff() {
+//*******************************   *******************************************************************
+function _allNotesOff() {
   MIDI.allNotesOff();
 }
 
@@ -107,7 +107,7 @@ function isCycleEnd() {
   if (info.cycling) {
     var distanceFromCycleEnd = info.rightCycleBeat - info.blockStartBeat;
     if (distanceFromCycleEnd < 0.01) {
-      allNotesOff();
+      _allNotesOff();
       Trace("cycle end", info.blockStartBeat);
       return true;
     } else {
@@ -137,13 +137,14 @@ function ProcessMIDI() {
 
     // get random note
     noteToSend = new NoteOn(getRandomFromArray(activeNotes));
+    //noteToSend.channel = 2;
 
     // if note is valid
     if (noteToSend.pitch <= 127 && noteToSend.pitch >= 0) {
       // play notesPerBeat number of notes per beat -------------------------------------------------------------
 
       if (notesPlayed < notesPerBeat && !isCycleEnd()) {
-        Trace("schedule notes at " + info.blockStartBeat);
+        Trace("SCHEDULE " + info.blockStartBeat);
         var noteSendDelay = getRandomFromArray(offsets);
         var noteTime = currentBeat + noteSendDelay;
 
@@ -151,11 +152,11 @@ function ProcessMIDI() {
         if (noteTime > info.blockStartBeat) {
           noteToSend.sendAtBeat(noteTime);
           Trace([
-            noteToSend.pitch,
-            " block: " + info.blockStartBeat.toFixed(2),
-            " current: " + currentBeat.toFixed(2),
+            noteToSend.channel,
+            " block: " + info.blockStartBeat.toFixed(4),
+            " current: " + currentBeat.toFixed(4),
             " delay: " + noteSendDelay,
-            " n: " + noteTime.toFixed(2),
+            " noteTime : " + noteTime.toFixed(4),
             " played : " + notesPlayed
           ]);
 
@@ -169,13 +170,12 @@ function ProcessMIDI() {
           // create noteOff events
           noteOffToSend = new NoteOff(noteToSend);
           var noteSendDelay = getNoteOffDelay(GetParameter("Note Length"));
-          Trace("note send delay " + noteSendDelay);
 
           noteOffToSend.sendAtBeat(noteTime + noteSendDelay);
         }
 
         // update prevBeat to current beat
-        prevBeat = currentBeat;
+        prevBeat = Math.round(currentBeat);
       } else if (notesPlayed >= notesPerBeat) {
         // reset currentBeat to block start beat
         currentBeat = getCurrentBeat(GetTimingInfo().blockStartBeat);
@@ -183,8 +183,8 @@ function ProcessMIDI() {
         offsets = getOffsets();
 
         // if it's the next beat now
-        if (Math.floor(currentBeat) > prevBeat) {
-          Trace("its the next beat");
+        if (currentBeat - prevBeat > 0.99) {
+          Trace("CURRENT: " + currentBeat + "PREV: " + prevBeat);
           // reset notesPlayed
           notesPlayed = 0;
           prevBeat = Math.floor(currentBeat);
