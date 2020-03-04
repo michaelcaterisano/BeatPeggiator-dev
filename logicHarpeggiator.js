@@ -22,7 +22,7 @@ let notesPlayed = 0;
 
 // how many notes should be played in a beat
 // initialized and updated in ParameterChanged()
-let notesPerBeat = 0;
+let notesPerBeat = null;
 
 let noteSendDelay = 0;
 
@@ -36,7 +36,7 @@ let timerStartTime = 0;
 //var prevNotesPerBeat = null;
 
 // set in ProcessMIDI() when note finishedPlayingNotes. reset to null in Reset().
-var prevBeat = 0;
+var prevBeat = null;
 
 const END_CYCLE_THRESHOLD = 0.01;
 
@@ -94,7 +94,7 @@ function getCurrentBeat() {
       result = position;
     }
   }
-  return Math.round(result * (60000 / info.tempo));
+  return Math.floor(result);
 }
 
 //**************************************************************************************************
@@ -105,42 +105,68 @@ function getCurrentBeat() {
 
 // removes and returns first offset in offsets
 function getOffset() {
-  return offsets.length > 0 ? offsets.shift() : null;
+  return offsets.length > 0 ? offsets.shift() : 0;
 }
 
 //**************************************************************************************************
 // returns a float beat position to be assigned to a noteOn
-// function getBeatPos() {
-//   const position = GetTimingInfo().blockStartBeat;
-//   const currentBeat = getCurrentBeat();
-//   const offset = getOffset();
+function getBeatPos() {
+  const position = GetTimingInfo().blockStartBeat;
+  const currentBeat = getCurrentBeat();
+  const offset = getOffset();
 
-//   offsets.splice(offsets.indexOf(offset), 1);
+  offsets.splice(offsets.indexOf(offset), 1);
 
-//   return offset === 0 ? position + DOWNBEAT_OFFSET : currentBeat + offset;
-// }
+  return offset === 0 ? position + DOWNBEAT_OFFSET : currentBeat + offset;
+}
 
 //**************************************************************************************************
 // convertes ms noteLength to single beat percentage. returns value between 0 and 1.
-// function getNoteOffDelay(noteLength) {
-//   const info = GetTimingInfo();
-//   const beatLength = 60000 / info.tempo;
-//   return noteLength / beatLength;
-// }
+function getNoteOffDelay(noteLength) {
+  const info = GetTimingInfo();
+  const beatLength = 60000 / info.tempo;
+  return noteLength / beatLength;
+}
 
 // RESET FUNCTIONS
+//**************************************************************************************************
+// resets offsets global variable
+function updateOffsets() {
+  const info = GetTimingInfo();
+
+  let result = [];
+  const beatDivision = GetParameter("Beat Division");
+  const notesPerBeat = GetParameter("Notes Per Beat");
+
+  // calculate offset
+  var offset = 60000 / info.tempo / beatDivision;
+
+  for (let i = 0; i < beatDivision; i++) {
+    result.push(offset * i);
+  }
+
+  Trace("result " + result);
+
+  shuffleArray(result);
+
+  offsets = result.splice(0, notesPerBeat).sort(function(a, b) {
+    return a - b;
+  });
+
+  return;
+}
 
 //**************************************************************************************************
 // resets notesPlayed global variable
-// function resetNotesPlayed() {
-//   notesPlayed = 0;
-// }
+function resetNotesPlayed() {
+  notesPlayed = 0;
+}
 
 //**************************************************************************************************
 // resets notesPerBeat global variable
-// function resetNotesPerBeat() {
-//   notesPerBeat = GetParameter("Notes Per Beat");
-// }
+function resetNotesPerBeat() {
+  notesPerBeat = GetParameter("Notes Per Beat");
+}
 
 // BOOLEANS
 //**************************************************************************************************
@@ -171,17 +197,11 @@ function isCycleEnd() {
 }
 
 //**************************************************************************************************
-function getLeftCycleBeat() {
-  const info = GetTimingInfo();
-  return info.leftCycleBeat * (60000 / info.tempo);
-}
-
-//**************************************************************************************************
 // tests is current beat is greater than the previous beat. returns boolean.
 function isNextBeat() {
-  const info = GetTimingInfo();
-  const beatLength = 60000 / info.tempo;
-  return dateNow() - prevBeat > beatLength;
+  const position = GetTimingInfo().blockStartBeat;
+  const beat = Math.floor(position);
+  return beat > prevBeat;
 }
 
 //**************************************************************************************************
@@ -212,17 +232,18 @@ function _allNotesOff() {
 //**************************************************************************************************
 function logNote(noteOn, noteOff) {
   Trace(
-    " noteSendDelay " +
-      noteSendDelay +
-      " now " +
-      dateNow() +
-      " nowMinusStart " +
-      (dateNow() - timerStartTime) +
-      //" pitch: " + MIDI.noteName(noteOn.pitch) +
-
-      " offsets [" +
-      offsets +
-      "]"
+    "time " +
+      GetTimingInfo().blockStartBeat.toFixed(3) +
+      " pitch: " +
+      MIDI.noteName(noteOn.pitch) +
+      " noteOn.beatPos " +
+      noteOn.beatPos.toFixed(3) +
+      " noteOff.beatPos " +
+      noteOff.beatPos.toFixed(3) +
+      " notesPlayed " +
+      (notesPlayed + 1) +
+      " notesPerBeat " +
+      notesPerBeat
   );
 }
 
@@ -238,71 +259,32 @@ function makeNote() {
 //**************************************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
+  offset = getOffset();
+  Trace("selected offset: " + offset);
   const noteToSend = new NoteOn(getRandomFromArray(activeNotes));
   noteToSend.send();
   noteOffToSend = new NoteOff(noteToSend);
   noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-  logNote(noteToSend, noteOffToSend);
-
+  noteSendDelay += offset;
   notesPlayed += 1;
-}
-
-//**************************************************************************************************
-// resets offsets global variable
-function updateOffsets() {
-  const info = GetTimingInfo();
-
-  let result = [];
-  const beatDivision = GetParameter("Beat Division");
-  const notesPerBeat = GetParameter("Notes Per Beat");
-
-  // calculate offset
-  var offset = 60000 / info.tempo / beatDivision;
-
-  for (let i = 0; i < beatDivision; i++) {
-    result.push(offset * i);
-  }
-
-  shuffleArray(result);
-
-  // offsets = result.splice(0, notesPerBeat).sort(function(a, b) {
-  //   return a - b;
-  // });
-
-  offsets = [0, 250, 500, 250];
-
-  return;
 }
 
 // LOGIC SCRIPTER FUNCTIONS
 //**************************************************************************************************
 function ProcessMIDI() {
-  switch (true) {
-    case isCycleEnd():
-      prevBeat = getLeftCycleBeat();
-      //updateOffsets();
-      Trace("******** TOP " + prevBeat);
-      break;
+  if (
+    activeNotes.length !== 0 &&
+    dateNow() - timerStartTime > noteSendDelay &&
+    !finishedPlayingNotes()
+  ) {
+    Trace("time check " + (dateNow() - timerStartTime));
+    Trace("noteSendDelay " + noteSendDelay);
+    sendNote();
+  }
 
-    case isNextBeat() && isPlaying():
-      notesPlayed = 0;
-      prevBeat = getCurrentBeat();
-      timerStartTime = dateNow();
-      updateOffsets();
-      noteSendDelay = getOffset();
-      Trace(" next " + noteSendDelay);
-      Trace("******** NEXT " + prevBeat);
-      break;
-
-    case activeNotes.length !== 0 &&
-      dateNow() - timerStartTime > noteSendDelay &&
-      notesPlayed < GetParameter("Notes Per Beat"):
-      Trace("send " + offsets);
-      sendNote();
-      noteSendDelay += getOffset();
-
-      break;
+  if (isNextBeat()) {
+    //updateOffsets();
   }
 
   // switch (true) {
@@ -345,6 +327,7 @@ function HandleMIDI(note) {
   if (note instanceof NoteOn) {
     activeNotes.push(note);
     if (activeNotes.length == 1) {
+      updateOffsets();
       timerStartTime = dateNow();
     }
   }
@@ -364,7 +347,6 @@ function HandleMIDI(note) {
 
 //**************************************************************************************************
 function Reset() {
-  Trace("*********** RESET");
   _allNotesOff();
   activeNotes = [];
   prevBeat = null;
