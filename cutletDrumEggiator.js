@@ -97,27 +97,16 @@ function makeNote() {
 }
 //**************************************************************************************************
 // returns a random note from the active notes array
-function sendNote(note) {
-  if (noteIsValid(note)) {
-    note.send();
+function sendNote(noteOn) {
+  if (noteIsValid(noteOn)) {
+    noteOn.send();
 
     const noteLength = getNoteOffDelay(GetParameter("Note Length"));
-    let noteOff = new NoteOff(note);
-    noteOff.beatPos = note.beatPos + noteLength;
+    let noteOff = new NoteOff(noteOn);
+    noteOff.beatPos = noteOn.beatPos + noteLength;
     noteOff.send();
 
-    Trace(
-      "time " +
-        GetTimingInfo().blockStartBeat.toFixed(3) +
-        " pitch: " +
-        MIDI.noteName(note.pitch) +
-        " noteOn.beatPos " +
-        note.beatPos.toFixed(3) +
-        " noteOff.beatPos " +
-        noteOff.beatPos.toFixed(3) +
-        " offsets " +
-        (offsets.length + 1)
-    );
+    //logNote(noteOn, noteOff);
 
     notesPlayed += 1;
   }
@@ -130,9 +119,25 @@ function getNoteOffDelay(noteLength) {
   return noteLength / beatLength;
 }
 
-//*******************************   *******************************************************************
+//**************************************************************************************************
 function _allNotesOff() {
   MIDI.allNotesOff();
+}
+
+//**************************************************************************************************
+function logNote(noteOn, noteOff) {
+  Trace(
+    "time " +
+      GetTimingInfo().blockStartBeat.toFixed(3) +
+      " pitch: " +
+      MIDI.noteName(noteOn.pitch) +
+      " noteOn.beatPos " +
+      noteOn.beatPos.toFixed(3) +
+      " noteOff.beatPos " +
+      noteOff.beatPos.toFixed(3) +
+      " offsets " +
+      (offsets.length + 1)
+  );
 }
 
 //**************************************************************************************************
