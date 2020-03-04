@@ -21,6 +21,8 @@ var notesPlayed = 0;
 
 var notesPerBeat = null;
 
+var prevNotesPerBeat = null;
+
 var beatDivision = null;
 
 var prevBeat = null;
@@ -106,7 +108,7 @@ function sendNote(noteOn) {
     noteOff.beatPos = noteOn.beatPos + noteLength;
     noteOff.send();
 
-    //logNote(noteOn, noteOff);
+    logNote(noteOn, noteOff);
 
     notesPlayed += 1;
   }
@@ -135,8 +137,10 @@ function logNote(noteOn, noteOff) {
       noteOn.beatPos.toFixed(3) +
       " noteOff.beatPos " +
       noteOff.beatPos.toFixed(3) +
-      " offsets " +
-      (offsets.length + 1)
+      " notesPlayed " +
+      (notesPlayed + 1) +
+      " notesPerBeat " +
+      notesPerBeat
   );
 }
 
@@ -192,6 +196,10 @@ function resetNotesPlayed() {
 }
 
 //**************************************************************************************************
+function resetNotesPerBeat() {
+  notesPerBeat = GetParameter("Notes Per Beat");
+}
+//**************************************************************************************************
 function finishedPlayingNotes() {
   return notesPlayed >= notesPerBeat;
 }
@@ -223,7 +231,7 @@ function ProcessMIDI() {
       Reset();
       break;
     case isCycleEnd(): // this gets called many times
-      Trace("cycle end");
+      Trace(" ************* CYCLE END");
       resetOffsets();
       resetNotesPlayed();
       break;
@@ -238,8 +246,9 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat():
-      Trace("next beat");
+      Trace(" ************* BEAT");
       resetOffsets();
+      resetNotesPerBeat();
       resetNotesPlayed();
   }
 }
@@ -270,22 +279,26 @@ function Reset() {
 function ParameterChanged(param, value) {
   if (param == 0) {
     if (value < notesPerBeat) {
+      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
+      //notesPerBeat = value;
       SetParameter(1, value);
     } else {
       resetOffsets();
-      resetNotesPlayed();
+      //resetNotesPlayed();
     }
   }
   if (param == 1) {
     if (value > beatDivision) {
       SetParameter(0, value);
-      notesPerBeat = value;
+      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
+      //notesPerBeat = value;
       resetOffsets();
-      resetNotesPlayed();
+      //resetNotesPlayed();
     } else {
-      notesPerBeat = value;
+      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
+      //notesPerBeat = value;
       resetOffsets();
-      resetNotesPlayed();
+      //resetNotesPlayed();
     }
   }
 }
