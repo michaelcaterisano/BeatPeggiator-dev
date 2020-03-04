@@ -27,7 +27,7 @@ var prevBeat = null;
 
 var prevNotesPerBeat = null;
 
-const END_CYCLE_THRESHOLD = 0.02;
+const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
 
@@ -108,13 +108,15 @@ function sendNote(note) {
 
     Trace(
       "time " +
-        GetTimingInfo().blockStartBeat +
+        GetTimingInfo().blockStartBeat.toFixed(3) +
         " pitch: " +
         MIDI.noteName(note.pitch) +
         " noteOn.beatPos " +
-        note.beatPos +
+        note.beatPos.toFixed(3) +
         " noteOff.beatPos " +
-        noteOff.beatPos
+        noteOff.beatPos.toFixed(3) +
+        " offsets " +
+        (offsets.length + 1)
     );
 
     notesPlayed += 1;
@@ -215,16 +217,16 @@ function ProcessMIDI() {
     case !isPlaying():
       Reset();
       break;
-    case isCycleEnd():
+    case isCycleEnd(): // this gets called many times
       Trace("cycle end");
       resetOffsets();
       resetNotesPlayed();
       break;
 
     case !finishedPlayingNotes():
-      prevBeat = getCurrentBeat();
       const note = makeNote();
       sendNote(note);
+      prevBeat = getCurrentBeat();
       break;
 
     case noActiveNotes():
