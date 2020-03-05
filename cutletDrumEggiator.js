@@ -211,7 +211,7 @@ function _allNotesOff() {
 
 //**************************************************************************************************
 function logNote(noteOn, noteOff) {
-  Trace(" dateNow: " + dateNow());
+  Trace(" noteTime: " + dateNow() + "noteSendDelay: " + noteSendDelay);
 }
 
 //**************************************************************************************************
@@ -314,8 +314,10 @@ function updateOffsets() {
 function ProcessMIDI() {
   switch (true) {
     case isCycleEnd():
-      prevBeat = getLeftCycleBeat();
+      prevBeat = 0;
       //updateOffsets();
+      notesPlayed = 0;
+      //noteSendDelay = getOffset()
       Trace("******** TOP " + prevBeat);
       break;
 
@@ -336,40 +338,6 @@ function ProcessMIDI() {
 
       break;
   }
-
-  // switch (true) {
-  //   case !isPlaying():
-  //     Reset();
-  //     break;
-
-  //   // all notes off
-  //   // reset offsets and notesPlayed count
-  //   case isCycleEnd():
-  //     Trace(" ************* CYCLE END");
-  //     _allNotesOff();
-  //     updateOffsets();
-  //     resetNotesPlayed();
-  //     break;
-
-  //   // make a note, send it,
-  //   // update notesPlayed count
-  //   // update prevBeat
-  //   case !finishedPlayingNotes():
-  //     const note = makeNote();
-  //     sendNote(note);
-  //     prevBeat = getCurrentBeat();
-  //     break;
-
-  //   case noActiveNotes(): // can this move higher up the chain?
-  //     break;
-
-  //   // reset offsets and notesPlayed
-  //   case isNextBeat():
-  //     Trace(" ************* BEAT");
-  //     updateOffsets();
-  //     //resetNotesPerBeat();
-  //     resetNotesPlayed();
-  // }
 }
 
 //**************************************************************************************************
@@ -404,31 +372,17 @@ function Reset() {
 
 //**************************************************************************************************
 function ParameterChanged(param, value) {
-  if (param == "Beat Division") {
-    //updateOffsets();
-
+  if (param == 0) {
     // Beat Division
     if (value < GetParameter("Notes Per Beat")) {
-      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
-      //notesPerBeat = value;
       SetParameter(1, value);
     } else {
-      //updateOffsets();
-      //resetNotesPlayed();
     }
   }
-  if (param == "Notes Per Beat") {
+  if (param == 1) {
     if (value > GetParameter("Beat Division")) {
       SetParameter("Beat Division", value);
-      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
-      //notesPerBeat = value;
-      //updateOffsets();
-      //resetNotesPlayed();
     } else {
-      //prevNotesPerBeat = notesPerBeat ? notesPerBeat : value;
-      //notesPerBeat = value;
-      //updateOffsets();
-      //resetNotesPlayed();
     }
   }
 }
