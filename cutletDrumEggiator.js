@@ -235,31 +235,76 @@ function sendNote() {
 
   notesPlayed += 1;
 }
+//**************************************************************************************************
+
+function getAndRemoveRandomItem(arr) {
+  if (arr.length !== 0) {
+    const index = Math.floor(Math.random() * arr.length);
+    return arr.splice(index, 1)[0];
+  } else {
+    console.log("empty array");
+  }
+}
+//**************************************************************************************************
+
+function getBeatMap(numNotes, notesPerBeat) {
+  let arr = new Array(notesPerBeat);
+  for (let i = 0; i < notesPerBeat; i++) {
+    arr[i] = i;
+  }
+
+  let indices = [];
+  for (let i = 0; i < numNotes; i++) {
+    let index = getAndRemoveRandomItem(arr);
+    indices.push(index);
+  }
+  console.log(indices.sort());
+
+  let output = new Array(notesPerBeat).fill(0);
+  for (let i = 0; i < indices.length; i++) {
+    let index = indices[i];
+    output[index] = 1;
+  }
+  return output;
+}
+//**************************************************************************************************
+
+function getNoteDelays(noteMap, offsetAmount) {
+  let sum = 0;
+
+  const offsetReducer = (output, curr, index) => {
+    switch (true) {
+      case index === 0 && curr === 0:
+        break;
+      case index === 0 && curr === 1:
+        output.push(sum);
+        break;
+      case curr === 0:
+        sum += offsetAmount;
+        break;
+      case curr === 1:
+        sum += offsetAmount;
+        output.push(sum);
+        sum = 0;
+        break;
+    }
+    return output;
+  };
+
+  return noteMap.reduce(offsetReducer, []);
+}
 
 //**************************************************************************************************
 // resets offsets global variable
 function updateOffsets() {
   const info = GetTimingInfo();
 
-  let result = [];
   const beatDivision = GetParameter("Beat Division");
   const notesPerBeat = GetParameter("Notes Per Beat");
 
-  // calculate offset
-  var offset = 60000 / info.tempo / beatDivision;
-
-  for (let i = 0; i < beatDivision; i++) {
-    result.push(offset * i);
-  }
-
-  shuffleArray(result);
-
-  // offsets = result.splice(0, notesPerBeat).sort(function(a, b) {
-  //   return a - b;
-  // });
-
-  offsets = [0, 500, 250];
-  Trace("reset offsets");
+  const beatMap = getBeatMap(notesPerBeat, beatDivision);
+  const offsetAmount = 60000 / info.tempo / beatDivision;
+  offsets = getNoteDelays(beatMap, offsetAmount);
 
   return;
 }
