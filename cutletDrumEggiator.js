@@ -211,19 +211,7 @@ function _allNotesOff() {
 
 //**************************************************************************************************
 function logNote(noteOn, noteOff) {
-  Trace(
-    " noteSendDelay " +
-      noteSendDelay +
-      " now " +
-      dateNow() +
-      " nowMinusStart " +
-      (dateNow() - timerStartTime) +
-      //" pitch: " + MIDI.noteName(noteOn.pitch) +
-
-      " offsets [" +
-      offsets +
-      "]"
-  );
+  Trace(" dateNow: " + dateNow());
 }
 
 //**************************************************************************************************
@@ -270,7 +258,8 @@ function updateOffsets() {
   //   return a - b;
   // });
 
-  offsets = [0, 250, 500, 250];
+  offsets = [0, 500, 250];
+  Trace("reset offsets");
 
   return;
 }
@@ -291,14 +280,12 @@ function ProcessMIDI() {
       timerStartTime = dateNow();
       updateOffsets();
       noteSendDelay = getOffset();
-      Trace(" next " + noteSendDelay);
       Trace("******** NEXT " + prevBeat);
       break;
 
     case activeNotes.length !== 0 &&
       dateNow() - timerStartTime > noteSendDelay &&
       notesPlayed < GetParameter("Notes Per Beat"):
-      Trace("send " + offsets);
       sendNote();
       noteSendDelay += getOffset();
 
