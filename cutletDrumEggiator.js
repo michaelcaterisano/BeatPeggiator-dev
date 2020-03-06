@@ -26,7 +26,9 @@ let noteSendDelay = 0;
 
 let timerStartTime = 0;
 
-let prevBeat = 0;
+//let prevBeat = 0;
+
+let prevBlockBeat = 0;
 
 let prevTempo = null;
 
@@ -130,22 +132,22 @@ function getNoteDelays(noteMap, offsetAmount) {
 // returns current beat as integer. keeps in cycle bounds if cycling.
 function getCurrentBeat() {
   const info = GetTimingInfo();
-  var position = info.blockStartBeat;
-  var result = null;
+  // var position = info.blockStartBeat;
+  // var result = null;
 
-  if (!info.cycling) {
-    // cycle is off
-    result = position;
-  } else {
-    // cycle is on
-    // position is outside cycle boundaries
-    if (position < info.leftCycleBeat || position > info.rightCycleBeat) {
-      result = info.leftCyceBeat;
-    } else {
-      result = position;
-    }
-  }
-  return Math.round(result * (60000 / info.tempo));
+  // if (!info.cycling) {
+  //   // cycle is off
+  //   result = position;
+  // } else {
+  //   // cycle is on
+  //   // position is outside cycle boundaries
+  //   if (position < info.leftCycleBeat || position > info.rightCycleBeat) {
+  //     result = info.leftCyceBeat;
+  //   } else {
+  //     result = position;
+  //   }
+  // }
+  return Math.round(info.blockStartBeat * (60000 / info.tempo));
 }
 
 //**************************************************************************************************
@@ -189,11 +191,16 @@ function getLeftCycleBeat() {
 }
 
 //**************************************************************************************************
-// tests is current beat is greater than the previous beat. returns boolean.
+//
 function isNextBeat() {
   const info = GetTimingInfo();
   const beatLength = 60000 / info.tempo;
-  return dateNow() - prevBeat > beatLength;
+  //return dateNow() - prevBeat > beatLength; // beatLength = 0?
+  //return (dateNow() - getCurrentBeat()) > beatLength;
+
+  return Math.floor(GetTimingInfo().blockStartBeat) > prevBlockBeat;
+
+  return;
 }
 
 //**************************************************************************************************
@@ -229,13 +236,17 @@ function logNote(noteOn, noteOff) {
       GetTimingInfo().blockStartBeat.toFixed(2) +
       " | tempo: " +
       GetTimingInfo().tempo.toFixed(2) +
-      " | note: " +
-      noteOn.pitch +
+      //" | note: " +
+      //noteOn.pitch +
+      " | numPlayed: " +
+      notesPlayed +
       " | delay: " +
       delay +
-      " | prevBeat: " +
-      prevBeat +
-      " | "
+      " | prevBlockBeat: " +
+      prevBlockBeat +
+      " | " +
+      " | " +
+      GetTimingInfo().blockStartBeat
   );
 }
 
@@ -279,13 +290,8 @@ function tempoChanged() {
 //**************************************************************************************************
 function ProcessMIDI() {
   switch (true) {
-    case tempoChanged():
-      //prevBeat = getCurrentBeat();
-      //updateOffsets();
-      break;
-
     case isCycleEnd():
-      prevBeat = 0;
+      prevBlockBeat = 0;
       notesPlayed = 0;
       Trace(
         "************************************************************************** "
@@ -295,7 +301,7 @@ function ProcessMIDI() {
     case isNextBeat():
       manualNotesPerBeat = GetParameter("Notes Per Beat");
       notesPlayed = 0;
-      prevBeat = getCurrentBeat();
+      prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
       prevTempo = GetTimingInfo().tempo;
       timerStartTime = dateNow();
       updateOffsets();
@@ -346,7 +352,7 @@ function Reset() {
   Trace("*********** RESET");
   _allNotesOff();
   activeNotes = [];
-  prevBeat = null;
+  prevBlockBeat = 0;
 }
 
 //**************************************************************************************************
@@ -377,7 +383,7 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 16,
     numberOfSteps: 15,
-    defaultValue: 8
+    defaultValue: 4
   },
   {
     name: "Notes Per Beat",
@@ -385,15 +391,15 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 8,
     numberOfSteps: 7,
-    defaultValue: 2
+    defaultValue: 4
   },
   {
     name: "Note Length",
     type: "lin",
     unit: "ms",
-    minValue: 0.0,
-    maxValue: 8000.0,
-    numberOfSteps: 800,
-    defaultValue: 500.0
+    minValue: 10,
+    maxValue: 100,
+    numberOfSteps: 10,
+    defaultValue: 10
   }
 ];
