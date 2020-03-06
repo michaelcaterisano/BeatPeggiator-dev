@@ -244,9 +244,8 @@ function logNote(noteOn, noteOff) {
       delay +
       " | prevBlockBeat: " +
       prevBlockBeat +
-      " | " +
-      " | " +
-      GetTimingInfo().blockStartBeat
+      " | blockStart: " +
+      GetTimingInfo().blockStartBeat.toFixed(2)
   );
 }
 
@@ -294,7 +293,7 @@ function ProcessMIDI() {
       prevBlockBeat = 0;
       notesPlayed = 0;
       Trace(
-        "************************************************************************** "
+        "************************************************************************************************** "
       );
       break;
 
@@ -308,7 +307,7 @@ function ProcessMIDI() {
       noteSendDelay = getOffset();
       if (isPlaying()) {
         Trace(
-          "---------------------------------------------------------------------------"
+          "------------------------------------------------------------------------------------------------"
         );
       }
       break;
