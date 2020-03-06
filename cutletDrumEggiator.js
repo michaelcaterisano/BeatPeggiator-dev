@@ -236,16 +236,21 @@ function logNote(noteOn, noteOff) {
       GetTimingInfo().blockStartBeat.toFixed(2) +
       " | tempo: " +
       GetTimingInfo().tempo.toFixed(2) +
-      //" | note: " +
-      //noteOn.pitch +
-      " | numPlayed: " +
-      notesPlayed +
+      /*" | note: " +
+      noteOn.pitch +*/
+      " | beatLength " +
+      (60000 / GetTimingInfo().tempo).toFixed(2) +
+      /*" | numPlayed: " +
+      notesPlayed +*/
       " | delay: " +
       delay +
-      " | prevBlockBeat: " +
+      " | offsets: [" +
+      offsets.map(o => o.toFixed(2)) +
+      "]"
+    /*" | prevBlockBeat: " +
       prevBlockBeat +
       " | blockStart: " +
-      GetTimingInfo().blockStartBeat.toFixed(2)
+      GetTimingInfo().blockStartBeat.toFixed(2)*/
   );
 }
 
@@ -381,8 +386,8 @@ var PluginParameters = [
     name: "Beat Division",
     type: "lin",
     minValue: 1,
-    maxValue: 16,
-    numberOfSteps: 15,
+    maxValue: 8,
+    numberOfSteps: 7,
     defaultValue: 4
   },
   {
