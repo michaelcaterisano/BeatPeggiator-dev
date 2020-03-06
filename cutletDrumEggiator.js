@@ -32,6 +32,8 @@ let prevBlockBeat = 0;
 
 let prevTempo = null;
 
+let nextDelay = 0;
+
 const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
@@ -153,7 +155,7 @@ function getCurrentBeat() {
 //**************************************************************************************************
 // removes and returns first offset in offsets
 function getOffset() {
-  return offsets.length > 0 ? offsets.shift() : null;
+  return offsets.length > 0 ? offsets.shift() : 0;
 }
 
 // BOOLEANS
@@ -233,24 +235,29 @@ function logNote(noteOn, noteOff) {
   let delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
   Trace(
     "| beat: " +
-      GetTimingInfo().blockStartBeat.toFixed(2) +
-      " | tempo: " +
-      GetTimingInfo().tempo.toFixed(2) +
-      /*" | note: " +
+    GetTimingInfo().blockStartBeat.toFixed(2) +
+    " | tempo: " +
+    GetTimingInfo().tempo.toFixed(2) +
+    " | delay: " +
+    delay +
+    /*" | note: " +
       noteOn.pitch +*/
-      " | beatLength " +
-      (60000 / GetTimingInfo().tempo).toFixed(2) +
-      /*" | numPlayed: " +
+    " | beatLength " +
+    (60000 / GetTimingInfo().tempo).toFixed(2) +
+    /*" | numPlayed: " +
       notesPlayed +*/
-      " | delay: " +
-      delay +
+    " | nextDelay: " +
+    nextDelay.toFixed(2) +
+    " | timer: " +
+    timerStartTime +
+    " | now: " +
+    dateNow() /*" | prevBlockBeat: " +
+      prevBlockBeat +
+      " | blockStart: " +
+      GetTimingInfo().blockStartBeat.toFixed(2)*/ +
       " | offsets: [" +
       offsets.map(o => o.toFixed(2)) +
       "]"
-    /*" | prevBlockBeat: " +
-      prevBlockBeat +
-      " | blockStart: " +
-      GetTimingInfo().blockStartBeat.toFixed(2)*/
   );
 }
 
@@ -270,11 +277,12 @@ function sendNote() {
 
 //**************************************************************************************************
 // resets offsets global variable
-function updateOffsets() {
+function updateOffsets(numNotes, beatDivision) {
   const info = GetTimingInfo();
-
-  const beatDivision = GetParameter("Beat Division");
-  const numNotes = GetParameter("Notes Per Beat");
+  if (!numNotes && !beatDivision) {
+    beatDivision = GetParameter("Beat Division");
+    numNotes = GetParameter("Notes Per Beat");
+  }
 
   const beatMap = getBeatMap(numNotes, beatDivision);
   const offsetAmount = 60000 / info.tempo / beatDivision;
@@ -324,7 +332,8 @@ function ProcessMIDI() {
       //if (getOffset() === null ) break;
 
       sendNote();
-      noteSendDelay += getOffset();
+      nextDelay = getOffset();
+      noteSendDelay += nextDelay;
 
       break;
   }
