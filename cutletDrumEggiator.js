@@ -225,8 +225,10 @@ function _allNotesOff() {
 function logNote(noteOn, noteOff) {
   let delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
   Trace(
-    "| BEAT: " +
+    "| beat: " +
       GetTimingInfo().blockStartBeat.toFixed(2) +
+      " | tempo: " +
+      GetTimingInfo().tempo.toFixed(2) +
       " | note: " +
       noteOn.pitch +
       " | delay: " +
@@ -278,9 +280,8 @@ function tempoChanged() {
 function ProcessMIDI() {
   switch (true) {
     case tempoChanged():
-      prevBeat = getCurrentBeat();
-      Trace("prevBeat " + prevBeat);
-      updateOffsets();
+      //prevBeat = getCurrentBeat();
+      //updateOffsets();
       break;
 
     case isCycleEnd():
