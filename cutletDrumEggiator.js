@@ -28,6 +28,8 @@ let timerStartTime = 0;
 
 let prevBeat = 0;
 
+let prevTempo = null;
+
 const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
@@ -149,7 +151,6 @@ function getCurrentBeat() {
 //**************************************************************************************************
 // removes and returns first offset in offsets
 function getOffset() {
-  Trace("get " + offsets.map(o => o.toFixed(2)));
   return offsets.length > 0 ? offsets.shift() : null;
 }
 
@@ -256,24 +257,37 @@ function updateOffsets() {
   return;
 }
 
+//**************************************************************************************************
+function tempoChanged() {
+  return prevTempo !== null && GetTimingInfo().tempo !== prevTempo;
+}
+
 // LOGIC SCRIPTER FUNCTIONS
 //**************************************************************************************************
 function ProcessMIDI() {
   switch (true) {
+    //case tempoChanged():
+    //Trace('tempo change')
+    //prevBeat = getCurrentBeat();
+    //break;
+
     case isCycleEnd():
       prevBeat = 0;
       notesPlayed = 0;
       Trace("******** TOP " + prevBeat);
       break;
 
-    case isNextBeat() && isPlaying():
+    case isNextBeat():
       manualNotesPerBeat = GetParameter("Notes Per Beat");
       notesPlayed = 0;
       prevBeat = getCurrentBeat();
+      prevTempo = GetTimingInfo().tempo;
       timerStartTime = dateNow();
       updateOffsets();
       noteSendDelay = getOffset();
-      Trace("******** NEXT " + prevBeat);
+      if (isPlaying()) {
+        Trace("******** NEXT " + prevBeat);
+      }
       break;
 
     case activeNotes.length !== 0 &&
