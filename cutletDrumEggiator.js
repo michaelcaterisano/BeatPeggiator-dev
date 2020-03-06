@@ -314,7 +314,8 @@ function ProcessMIDI() {
 
     case activeNotes.length !== 0 &&
       dateNow() - timerStartTime > noteSendDelay &&
-      notesPlayed < manualNotesPerBeat:
+      notesPlayed < manualNotesPerBeat &&
+      isPlaying():
       //if (getOffset() === null ) break;
 
       sendNote();
