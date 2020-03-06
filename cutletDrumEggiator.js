@@ -140,7 +140,7 @@ function getCurrentBeat() {
     // cycle is on
     // position is outside cycle boundaries
     if (position < info.leftCycleBeat || position > info.rightCycleBeat) {
-      result = info.leftCycleBeat;
+      result = info.leftCyceBeat;
     } else {
       result = position;
     }
@@ -223,7 +223,18 @@ function _allNotesOff() {
 
 //**************************************************************************************************
 function logNote(noteOn, noteOff) {
-  Trace(" noteTime: " + dateNow() + "noteSendDelay: " + noteSendDelay);
+  let delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
+  Trace(
+    "| BEAT: " +
+      GetTimingInfo().blockStartBeat.toFixed(2) +
+      " | note: " +
+      noteOn.pitch +
+      " | delay: " +
+      delay +
+      " | prevBeat: " +
+      prevBeat +
+      " | "
+  );
 }
 
 //**************************************************************************************************
@@ -266,15 +277,18 @@ function tempoChanged() {
 //**************************************************************************************************
 function ProcessMIDI() {
   switch (true) {
-    //case tempoChanged():
-    //Trace('tempo change')
-    //prevBeat = getCurrentBeat();
-    //break;
+    case tempoChanged():
+      prevBeat = getCurrentBeat();
+      Trace("prevBeat " + prevBeat);
+      updateOffsets();
+      break;
 
     case isCycleEnd():
       prevBeat = 0;
       notesPlayed = 0;
-      Trace("******** TOP " + prevBeat);
+      Trace(
+        "************************************************************************** "
+      );
       break;
 
     case isNextBeat():
@@ -286,7 +300,9 @@ function ProcessMIDI() {
       updateOffsets();
       noteSendDelay = getOffset();
       if (isPlaying()) {
-        Trace("******** NEXT " + prevBeat);
+        Trace(
+          "---------------------------------------------------------------------------"
+        );
       }
       break;
 
