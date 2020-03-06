@@ -20,29 +20,26 @@ let offsets = [];
 // updated by sendNote()
 let notesPlayed = 0;
 
-// how many notes should be played in a beat
-// initialized and updated in ParameterChanged()
-//let notesPerBeat = 0;
+let manualNotesPerBeat = 0;
 
 let noteSendDelay = 0;
 
 let timerStartTime = 0;
 
-// maximum notes per beat
-// initilized and updated by ParameterChanged()
-//var beatDivision = null;
-
-// how many notes were played in the previous beat
-//var prevNotesPerBeat = null;
-
-// set in ProcessMIDI() when note finishedPlayingNotes. reset to null in Reset().
-var prevBeat = 0;
+let prevBeat = 0;
 
 const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
 
 const DOWNBEAT_OFFSET = 0.001;
+
+//**************************************************************************************************
+// gets current moment in milliseconds
+function dateNow() {
+  var timingInfo = GetTimingInfo();
+  return Math.round(timingInfo.blockStartBeat * (60000 / timingInfo.tempo));
+}
 
 //**************************************************************************************************
 // shufflfes array in place
@@ -53,13 +50,6 @@ function shuffleArray(array) {
   }
 }
 
-// GET FUNCTIONS
-//**************************************************************************************************
-// gets current moment in milliseconds
-function dateNow() {
-  var timingInfo = GetTimingInfo();
-  return Math.round(timingInfo.blockStartBeat * (60000 / timingInfo.tempo));
-}
 //**************************************************************************************************
 function getRandomInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -73,6 +63,65 @@ function getRandomFromArray(arr) {
   var max = arr.length - 1;
   var index = getRandomInRange(0, max);
   return arr[index];
+}
+
+//**************************************************************************************************
+
+function getAndRemoveRandomItem(arr) {
+  if (arr.length !== 0) {
+    const index = Math.floor(Math.random() * arr.length);
+    return arr.splice(index, 1)[0];
+  } else {
+    console.log("empty array");
+  }
+}
+
+//**************************************************************************************************
+function getBeatMap(numNotes, beatDivision) {
+  let arr = new Array(beatDivision);
+  for (let i = 0; i < beatDivision; i++) {
+    arr[i] = i;
+  }
+
+  let indices = [];
+  for (let i = 0; i < numNotes; i++) {
+    let index = getAndRemoveRandomItem(arr);
+    indices.push(index);
+  }
+  console.log(indices.sort());
+
+  let output = new Array(beatDivision).fill(0);
+  for (let i = 0; i < indices.length; i++) {
+    let index = indices[i];
+    output[index] = 1;
+  }
+  return output;
+}
+
+//**************************************************************************************************
+function getNoteDelays(noteMap, offsetAmount) {
+  let sum = 0;
+
+  const offsetReducer = (output, curr, index) => {
+    switch (true) {
+      case index === 0 && curr === 0:
+        break;
+      case index === 0 && curr === 1:
+        output.push(sum);
+        break;
+      case curr === 0:
+        sum += offsetAmount;
+        break;
+      case curr === 1:
+        sum += offsetAmount;
+        output.push(sum);
+        sum = 0;
+        break;
+    }
+    return output;
+  };
+
+  return noteMap.reduce(offsetReducer, []);
 }
 
 //**************************************************************************************************
@@ -177,15 +226,6 @@ function logNote(noteOn, noteOff) {
 }
 
 //**************************************************************************************************
-// creates a new NoteOn object from a randomly selected note from activeNotes
-function makeNote() {
-  const selectedNote = getRandomFromArray(activeNotes);
-  let newNote = new NoteOn(selectedNote);
-  newNote.beatPos = getBeatPos();
-  return newNote;
-}
-
-//**************************************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
   //if (getOffset() === null) { return }
@@ -198,64 +238,6 @@ function sendNote() {
 
   notesPlayed += 1;
 }
-//**************************************************************************************************
-
-function getAndRemoveRandomItem(arr) {
-  if (arr.length !== 0) {
-    const index = Math.floor(Math.random() * arr.length);
-    return arr.splice(index, 1)[0];
-  } else {
-    console.log("empty array");
-  }
-}
-//**************************************************************************************************
-
-function getBeatMap(numNotes, notesPerBeat) {
-  let arr = new Array(notesPerBeat);
-  for (let i = 0; i < notesPerBeat; i++) {
-    arr[i] = i;
-  }
-
-  let indices = [];
-  for (let i = 0; i < numNotes; i++) {
-    let index = getAndRemoveRandomItem(arr);
-    indices.push(index);
-  }
-  console.log(indices.sort());
-
-  let output = new Array(notesPerBeat).fill(0);
-  for (let i = 0; i < indices.length; i++) {
-    let index = indices[i];
-    output[index] = 1;
-  }
-  return output;
-}
-//**************************************************************************************************
-
-function getNoteDelays(noteMap, offsetAmount) {
-  let sum = 0;
-
-  const offsetReducer = (output, curr, index) => {
-    switch (true) {
-      case index === 0 && curr === 0:
-        break;
-      case index === 0 && curr === 1:
-        output.push(sum);
-        break;
-      case curr === 0:
-        sum += offsetAmount;
-        break;
-      case curr === 1:
-        sum += offsetAmount;
-        output.push(sum);
-        sum = 0;
-        break;
-    }
-    return output;
-  };
-
-  return noteMap.reduce(offsetReducer, []);
-}
 
 //**************************************************************************************************
 // resets offsets global variable
@@ -263,10 +245,12 @@ function updateOffsets() {
   const info = GetTimingInfo();
 
   const beatDivision = GetParameter("Beat Division");
-  const notesPerBeat = GetParameter("Notes Per Beat");
+  const numNotes = GetParameter("Notes Per Beat");
 
-  const beatMap = getBeatMap(notesPerBeat, beatDivision);
+  const beatMap = getBeatMap(numNotes, beatDivision);
   const offsetAmount = 60000 / info.tempo / beatDivision;
+
+  // update offsets
   offsets = getNoteDelays(beatMap, offsetAmount);
 
   return;
@@ -283,6 +267,7 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat() && isPlaying():
+      manualNotesPerBeat = GetParameter("Notes Per Beat");
       notesPlayed = 0;
       prevBeat = getCurrentBeat();
       timerStartTime = dateNow();
@@ -293,7 +278,7 @@ function ProcessMIDI() {
 
     case activeNotes.length !== 0 &&
       dateNow() - timerStartTime > noteSendDelay &&
-      notesPlayed < GetParameter("Notes Per Beat"):
+      notesPlayed < manualNotesPerBeat:
       //if (getOffset() === null ) break;
 
       sendNote();
