@@ -34,6 +34,8 @@ let prevTempo = null;
 
 let nextDelay = 0;
 
+let beatMap = [];
+
 const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
@@ -231,7 +233,7 @@ function _allNotesOff() {
 }
 
 //**************************************************************************************************
-function logNote(noteOn, noteOff) {
+function logNote() {
   let delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
   Trace(
     "| beat: " +
@@ -240,14 +242,10 @@ function logNote(noteOn, noteOff) {
     GetTimingInfo().tempo.toFixed(2) +
     " | delay: " +
     delay +
-    /*" | note: " +
-      noteOn.pitch +*/
     " | beatLength " +
     (60000 / GetTimingInfo().tempo).toFixed(2) +
-    /*" | numPlayed: " +
-      notesPlayed +*/
-    " | nextDelay: " +
-    nextDelay.toFixed(2) +
+    " | numPlayed: " +
+    notesPlayed +
     " | timer: " +
     timerStartTime +
     " | now: " +
@@ -257,6 +255,10 @@ function logNote(noteOn, noteOff) {
       GetTimingInfo().blockStartBeat.toFixed(2)*/ +
       " | offsets: [" +
       offsets.map(o => o.toFixed(2)) +
+      "]" +
+      " | beatMap: " +
+      "[" +
+      beatMap +
       "]"
   );
 }
@@ -270,27 +272,42 @@ function sendNote() {
   noteOffToSend = new NoteOff(noteToSend);
   noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-  logNote(noteToSend, noteOffToSend);
+  logNote();
 
   notesPlayed += 1;
 }
 
 //**************************************************************************************************
 // resets offsets global variable
-function updateOffsets(numNotes, beatDivision) {
+function updateOffsets(numNotes) {
   const info = GetTimingInfo();
-  if (!numNotes && !beatDivision) {
-    beatDivision = GetParameter("Beat Division");
+  beatDivision = GetParameter("Beat Division");
+
+  if (!numNotes) {
     numNotes = GetParameter("Notes Per Beat");
   }
 
-  const beatMap = getBeatMap(numNotes, beatDivision);
+  beatMap = getBeatMap(numNotes, beatDivision);
   const offsetAmount = 60000 / info.tempo / beatDivision;
 
   // update offsets
+  if (isPlaying()) {
+    Trace(
+      "[" + getNoteDelays(beatMap, offsetAmount).map(el => el.toFixed(2)) + "]"
+    );
+  }
+
   offsets = getNoteDelays(beatMap, offsetAmount);
 
   return;
+}
+
+function adjustOffsets() {
+  const info = GetTimingInfo();
+  const offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
+  let newOffsets = getNoteDelays(beatMap, offsetAmount);
+  newOffsets.splice(0, notesPlayed + 1);
+  offsets = newOffsets;
 }
 
 //**************************************************************************************************
@@ -311,12 +328,11 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat():
+      updateOffsets();
       manualNotesPerBeat = GetParameter("Notes Per Beat");
       notesPlayed = 0;
       prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
-      prevTempo = GetTimingInfo().tempo;
       timerStartTime = dateNow();
-      updateOffsets();
       noteSendDelay = getOffset();
       if (isPlaying()) {
         Trace(
@@ -325,16 +341,19 @@ function ProcessMIDI() {
       }
       break;
 
+    // play notes
     case activeNotes.length !== 0 &&
       dateNow() - timerStartTime > noteSendDelay &&
       notesPlayed < manualNotesPerBeat &&
       isPlaying():
       //if (getOffset() === null ) break;
-
       sendNote();
       nextDelay = getOffset();
       noteSendDelay += nextDelay;
+      break;
 
+    case tempoChanged():
+      //adjustOffsets();
       break;
   }
 }
