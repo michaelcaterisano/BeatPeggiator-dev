@@ -287,8 +287,7 @@ function timeToSendNote() {
   return (
     activeNotes.length !== 0 &&
     dateNow() - timerStartTime > noteSendDelay &&
-    notesPlayed < manualNotesPerBeat &&
-    isPlaying()
+    notesPlayed < manualNotesPerBeat
   );
 }
 
