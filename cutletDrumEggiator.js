@@ -36,6 +36,10 @@ let logTimer = 0;
 
 let beatMap = [];
 
+let prevTempoSample = [];
+
+let currentTempoSample = [];
+
 const END_CYCLE_THRESHOLD = 0.01;
 
 const NEXT_BEAT_THRESHOLD = 0.995;
@@ -134,6 +138,8 @@ function log() {
       delay +
       " | beatLength " +
       (60000 / GetTimingInfo().tempo).toFixed(2) +
+      " | timerStartTime " +
+      timerStartTime +
       " | now: " +
       dateNow() +
       " | diff: " +
@@ -149,8 +155,6 @@ function sendNote() {
   noteToSend.send();
   noteOffToSend = new NoteOff(noteToSend);
   noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
-
-  log();
 
   notesPlayed += 1;
 }
@@ -250,13 +254,75 @@ function timeToSendNote() {
   );
 }
 
+//**************************************************************************************************
+function initializeTempoSamples() {
+  prevTempoSample = [];
+  currentTempoSample = [];
+}
+
+//**************************************************************************************************
+function sampleTempo() {
+  const info = GetTimingInfo();
+
+  if (currentTempoSample.length === 0) {
+    currentTempoSample = [dateNow(), info.tempo];
+    prevTempoSample = currentTempoSample;
+    return;
+  }
+
+  currentTempoSample = [dateNow(), info.tempo];
+
+  if (currentTempoSample[0] - prevTempoSample[0] > 100) {
+    printSamples();
+
+    getAcceleration();
+
+    currentTempoSample = [dateNow(), info.tempo];
+
+    prevTempoSample = currentTempoSample;
+  }
+}
+
+//**************************************************************************************************
+
+function printSamples() {
+  if (isPlaying()) {
+    Trace(
+      "curr:  [" +
+        currentTempoSample.map(el => el.toFixed(2)) +
+        "]" +
+        " prev: [" +
+        prevTempoSample.map(el => el.toFixed(2)) +
+        "]"
+    );
+  }
+}
+
+//**************************************************************************************************
+function getAcceleration() {
+  if (prevTempoSample.length === 0) {
+    return 0;
+  } else if (currentTempoSample[1] - prevTempoSample[1] <= 0) {
+    return 0;
+  } else {
+    const acceleration =
+      (currentTempoSample[1] - prevTempoSample[1]) /
+      (currentTempoSample[0] - prevTempoSample[0]);
+    Trace("acceleration: " + acceleration);
+    return acceleration;
+  }
+}
+
 // LOGIC SCRIPTER FUNCTIONS
 //**************************************************************************************************
 function ProcessMIDI() {
   const info = GetTimingInfo();
 
+  sampleTempo();
+
   switch (true) {
     case isCycleEnd():
+      initializeTempoSamples();
       prevBlockBeat = 0;
       notesPlayed = 0;
       Trace(
@@ -266,12 +332,15 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat():
+      printSamples();
+
       beatMap = getBeatMap();
       offsets = getNoteDelays();
 
-      //offsets = [0, 232, 216.2, 201 ]
+      //offsets = [0, 234, 219, 206 ]
 
       let offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
+
       _trace(
         " \n NEXT BEATMAP: [" +
           beatMap +
@@ -297,9 +366,11 @@ function ProcessMIDI() {
             " bpm"
         );
       }
+
       break;
 
     case timeToSendNote():
+      //log();
       sendNote();
       noteSendDelay += offsets[notesPlayed];
       break;
@@ -308,6 +379,8 @@ function ProcessMIDI() {
 
 //**************************************************************************************************
 function HandleMIDI(note) {
+  const info = GetTimingInfo();
+
   if (note instanceof NoteOn) {
     activeNotes.push(note);
     if (activeNotes.length == 1) {
@@ -333,6 +406,8 @@ function Reset() {
   Trace("*********** RESET");
   MIDI.allNotesOff();
   activeNotes = [];
+  initializeTempoSamples();
+
   prevBlockBeat = 0;
   noteSendDelay = 0;
 }
