@@ -2,7 +2,7 @@
 
 #### Installation:
 
-Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file `DrumEggiator.js`. Close the editor and choose "Save as" from the Scripter dropdown menu.
+Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file `DrumEggiator.js`, then hit `Run Script`. Don't forget to hit `Run Script`! Otherwise the code will not run. Close the editor and choose "Save as" from the Scripter dropdown menu.
 
 #### Description:
 
