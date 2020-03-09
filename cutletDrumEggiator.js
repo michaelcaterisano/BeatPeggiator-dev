@@ -13,40 +13,40 @@
 var NeedsTimingInfo = true;
 
 // array that will hold currently active MIDI notes
-let activeNotes = [];
+var activeNotes = [];
 
 // array that will hold offset amounts, or 1 / beatDivision
-let offsets = [];
+var offsets = [];
 
 // the current beat map
-let beatMap = [];
+var beatMap = [];
 
 // contains two numbers, time and tempo, to be
 // compared with currentTempoSample to calculate
 // acceleration
-let prevTempoSample = [];
-let currentTempoSample = [];
+var prevTempoSample = [];
+var currentTempoSample = [];
 
 // variable to track how many notes have been played
 // updated by sendNote()
-let notesPlayed = 0;
+var notesPlayed = 0;
 
-let manualNotesPerBeat = 0; // still need this?
+var manualNotesPerBeat = 0; // still need this?
 
 // time in milliseconds that next note should be played
-let noteSendDelay = 0;
+var noteSendDelay = 0;
 
 // static time reset at each beat
-let timerStartTime = 0;
+var timerStartTime = 0;
 
 // the previous beat, used to check if it's the next beat
-let prevBlockBeat = 0;
+var prevBlockBeat = 0;
 
 // the previous tempo
-let prevTempo = null; // need this?
+var prevTempo = null; // need this?
 
 // distance from right cycle beat to trigger isCycleEnd
-const END_CYCLE_THRESHOLD = 0.01;
+var END_CYCLE_THRESHOLD = 0.01;
 
 // PARAMETER DEFINITIONS
 //**************************************************************************************************
@@ -168,7 +168,7 @@ function ParameterChanged(param, value) {
 //**************************************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
-  const noteToSend = new NoteOn(getRandomFromArray(activeNotes));
+  var noteToSend = new NoteOn(getRandomFromArray(activeNotes));
   noteToSend.send();
   noteOffToSend = new NoteOff(noteToSend);
   noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
@@ -179,25 +179,25 @@ function sendNote() {
 // returns random beatmap array e.g. [0, 1, 1, 0] for 2 beats in 4 divisions
 function generateBeatMap(numNotes, beatDivision) {
   // create array of size beatDivision and fill with index numbers
-  let arr = new Array(beatDivision);
-  for (let i = 0; i < beatDivision; i++) {
+  var arr = new Array(beatDivision);
+  for (var i = 0; i < beatDivision; i++) {
     arr[i] = i;
   }
 
   // randomly choose numNotes number of indices from array
   // these will be the beatDivisions that have a note
-  let indices = [];
-  for (let i = 0; i < numNotes; i++) {
-    let index = getAndRemoveRandomItem(arr);
+  var indices = [];
+  for (var i = 0; i < numNotes; i++) {
+    var index = getAndRemoveRandomItem(arr);
     indices.push(index);
   }
 
   // create output array like [1, 0, 1, 1] where 1 represents a note
   // 0 represents a rest, and the array length represents the number of
   // beat divisions
-  let output = new Array(beatDivision).fill(0);
-  for (let i = 0; i < indices.length; i++) {
-    let index = indices[i];
+  var output = new Array(beatDivision).fill(0);
+  for (var i = 0; i < indices.length; i++) {
+    var index = indices[i];
     output[index] = 1;
   }
   return output;
@@ -207,9 +207,9 @@ function generateBeatMap(numNotes, beatDivision) {
 // returns array of note delays in milliseconds,
 //e.g. [0, 255, 255, 255] for beatmap [1, 1, 1, 1] at 60bpm
 function generateNoteDelays(beatMap, offsetAmount) {
-  let sum = 0;
+  var sum = 0;
 
-  const offsetReducer = (output, curr, index) => {
+  var offsetReducer = (output, curr, index) => {
     switch (true) {
       case index === 0 && curr === 0:
         break;
@@ -242,8 +242,8 @@ function getBeatMap() {
 //**************************************************************************************************
 // calculates offset amount and returns note delays
 function getNoteDelays() {
-  const info = GetTimingInfo();
-  const offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
+  var info = GetTimingInfo();
+  var offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
   return generateNoteDelays(beatMap, offsetAmount);
 }
 //**************************************************************************************************
@@ -251,14 +251,14 @@ function getNoteDelays() {
 //**************************************************************************************************
 // tests whether current position is very close to cycleEnd. returns Boolean.
 function isCycleEnd() {
-  const info = GetTimingInfo();
+  var info = GetTimingInfo();
   // not cycling
   if (!info.cycling) {
     return false;
   }
   // cycle is on
   else {
-    const position = info.blockStartBeat;
+    var position = info.blockStartBeat;
     // end of cycle
     if (info.rightCycleBeat - position < END_CYCLE_THRESHOLD) {
       return true;
@@ -317,7 +317,7 @@ function getRandomFromArray(arr) {
 //**************************************************************************************************
 function getAndRemoveRandomItem(arr) {
   if (arr.length !== 0) {
-    const index = Math.floor(Math.random() * arr.length);
+    var index = Math.floor(Math.random() * arr.length);
     return arr.splice(index, 1)[0];
   } else {
     console.log("empty array");
@@ -327,7 +327,7 @@ function getAndRemoveRandomItem(arr) {
 // LOGGING
 //**************************************************************************************************
 function log() {
-  let delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
+  var delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
   Trace(
     "| beat: " +
       GetTimingInfo().blockStartBeat.toFixed(2) +
@@ -387,7 +387,7 @@ function printCycleInfo() {
 // UNUSED -- ACCELERATION FUNCTIONS
 //**************************************************************************************************
 function sampleTempo() {
-  const info = GetTimingInfo();
+  var info = GetTimingInfo();
 
   if (currentTempoSample.length === 0) {
     currentTempoSample = [info.blockStartBeat, info.tempo];
@@ -410,16 +410,16 @@ function sampleTempo() {
 
 //**************************************************************************************************
 function getAcceleration() {
-  const tempo0 = prevTempoSample[1];
-  const tempo1 = currentTempoSample[1];
-  const time0 = prevTempoSample[0];
-  const time1 = currentTempoSample[0];
+  var tempo0 = prevTempoSample[1];
+  var tempo1 = currentTempoSample[1];
+  var time0 = prevTempoSample[0];
+  var time1 = currentTempoSample[0];
   if (prevTempoSample.length === 0) {
     return 0;
   } else if (tempo1 - tempo0 <= 0) {
     return 0;
   } else {
-    const acceleration = (tempo1 - tempo0) / (time1 - time0);
+    var acceleration = (tempo1 - tempo0) / (time1 - time0);
     return acceleration;
   }
 }
