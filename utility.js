@@ -15,7 +15,3 @@ function getTime(d, a) {
 }
 
 const a = getAcceleration(0, 1, 60, 90);
-
-const time = getTime(0.25, a);
-
-console.log(time);
