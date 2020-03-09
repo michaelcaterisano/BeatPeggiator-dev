@@ -265,19 +265,19 @@ function sampleTempo() {
   const info = GetTimingInfo();
 
   if (currentTempoSample.length === 0) {
-    currentTempoSample = [dateNow(), info.tempo];
+    currentTempoSample = [info.blockStartBeat, info.tempo];
     prevTempoSample = currentTempoSample;
     return;
   }
 
-  currentTempoSample = [dateNow(), info.tempo];
+  currentTempoSample = [info.blockStartBeat, info.tempo];
 
-  if (currentTempoSample[0] - prevTempoSample[0] > 100) {
+  if (currentTempoSample[0] - prevTempoSample[0] > 0.2) {
     printSamples();
 
     getAcceleration();
 
-    currentTempoSample = [dateNow(), info.tempo];
+    currentTempoSample = [info.blockStartBeat, info.tempo];
 
     prevTempoSample = currentTempoSample;
   }
@@ -300,17 +300,36 @@ function printSamples() {
 
 //**************************************************************************************************
 function getAcceleration() {
+  const tempo0 = prevTempoSample[1];
+  const tempo1 = currentTempoSample[1];
+  const time0 = prevTempoSample[0];
+  const time1 = currentTempoSample[0];
   if (prevTempoSample.length === 0) {
     return 0;
-  } else if (currentTempoSample[1] - prevTempoSample[1] <= 0) {
+  } else if (tempo1 - tempo0 <= 0) {
     return 0;
   } else {
-    const acceleration =
-      (currentTempoSample[1] - prevTempoSample[1]) /
-      (currentTempoSample[0] - prevTempoSample[0]);
-    Trace("acceleration: " + acceleration);
+    const acceleration = (tempo1 - tempo0) / (time1 - time0);
     return acceleration;
   }
+}
+
+//**************************************************************************************************
+function printBeatInfo() {
+  _trace(
+    " \n NEXT BEATMAP: [" +
+      beatMap +
+      "] " +
+      "  NEXT DELAYS: [" +
+      offsets.map(o => o.toFixed(2)) +
+      "]" +
+      "  TIMER: " +
+      timerStartTime
+  );
+
+  _trace(
+    "------------------------------------------------------------------------------------------------"
+  );
 }
 
 // LOGIC SCRIPTER FUNCTIONS
@@ -318,13 +337,9 @@ function getAcceleration() {
 function ProcessMIDI() {
   const info = GetTimingInfo();
 
-  sampleTempo();
-
   switch (true) {
     case isCycleEnd():
-      initializeTempoSamples();
       prevBlockBeat = 0;
-      notesPlayed = 0;
       Trace(
         "**************************************************************************************************" +
           dateNow()
@@ -332,45 +347,23 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat():
-      printSamples();
-
+      // generate beatMap and delays
       beatMap = getBeatMap();
       offsets = getNoteDelays();
 
-      //offsets = [0, 234, 219, 206 ]
-
-      let offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
-
-      _trace(
-        " \n NEXT BEATMAP: [" +
-          beatMap +
-          "] " +
-          "  NEXT DELAYS: [" +
-          offsets.map(o => o.toFixed(2)) +
-          "]" +
-          "  TIMER: " +
-          timerStartTime
-      );
-
+      // set values for this beat
       manualNotesPerBeat = GetParameter("Notes Per Beat");
       notesPlayed = 0;
       prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
       timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
-      if (isPlaying()) {
-        Trace(
-          "------------------------------------------------------------------------------------------------" +
-            dateNow() +
-            "ms " +
-            GetTimingInfo().tempo.toFixed(2) +
-            " bpm"
-        );
-      }
 
+      // log info
+      printBeatInfo();
       break;
 
     case timeToSendNote():
-      //log();
+      log();
       sendNote();
       noteSendDelay += offsets[notesPlayed];
       break;
