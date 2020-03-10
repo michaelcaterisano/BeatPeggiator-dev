@@ -33,6 +33,8 @@ var notesPlayed = 0;
 
 var manualNotesPerBeat = 0; // still need this?
 
+var manualBeatDivision = 0;
+
 // time in milliseconds that next note should be played
 var noteSendDelay = 0;
 
@@ -42,11 +44,12 @@ var timerStartTime = 0;
 // the previous beat, used to check if it's the next beat
 var prevBlockBeat = 0;
 
-// the previous tempo
-var prevTempo = null; // need this?
+var accelerating = true;
 
 // distance from right cycle beat to trigger isCycleEnd
-var END_CYCLE_THRESHOLD = 0.01;
+var END_CYCLE_THRESHOLD = 0.05;
+
+var SAMPLE_THRESHOLD = 20;
 
 // PARAMETER DEFINITIONS
 //**************************************************************************************************
@@ -56,16 +59,16 @@ var PluginParameters = [
     name: "Beat Division",
     type: "lin",
     minValue: 1,
-    maxValue: 8,
-    numberOfSteps: 7,
+    maxValue: 64,
+    numberOfSteps: 63,
     defaultValue: 4
   },
   {
     name: "Notes Per Beat",
     type: "lin",
     minValue: 1,
-    maxValue: 8,
-    numberOfSteps: 7,
+    maxValue: 64,
+    numberOfSteps: 63,
     defaultValue: 4
   },
   {
@@ -82,34 +85,49 @@ var PluginParameters = [
 // LOGIC SCRIPTER FUNCTIONS
 //**************************************************************************************************
 function ProcessMIDI() {
+  offsets = getNoteDelays();
+
   switch (true) {
     case isCycleEnd():
+      timerStartTime = Date.now();
       // reset so that isNextBeat() fires on cycle beginning
       prevBlockBeat = 0;
-
       printCycleInfo();
       break;
 
     case isNextBeat():
-      // generate beatMap and delays
-      beatMap = getBeatMap();
-      offsets = getNoteDelays();
+      updateAcceleration();
+
+      timerStartTime = dateNow();
+      noteSendDelay = offsets[notesPlayed];
 
       // set values for this beat
       manualNotesPerBeat = GetParameter("Notes Per Beat");
+      manualBeatDivision = GetParameter("Beat Division");
+
+      // generate beatMap and delays
+      beatMap = getBeatMap(manualNotesPerBeat, manualBeatDivision);
+      offsets = getNoteDelays();
+
       notesPlayed = 0;
-      prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
-      timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
+      prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
 
       // log info
       printBeatInfo();
       break;
 
-    case timeToSendNote():
-      log();
+    case timeToSendNote() && !isCycleEnd():
+      if (isCycleEnd()) {
+        break;
+      }
+      offsets = getNoteDelays();
+
       sendNote();
-      noteSendDelay += offsets[notesPlayed];
+
+      timerStartTime = dateNow();
+      noteSendDelay = offsets[notesPlayed];
+
       break;
   }
 }
@@ -132,7 +150,7 @@ function HandleMIDI(note) {
   }
 
   if (activeNotes.length === 0) {
-    timerStartTime = 0;
+    timerStartTime = dateNow();
   }
 }
 
@@ -173,8 +191,23 @@ function sendNote() {
   noteOffToSend = new NoteOff(noteToSend);
   noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
+  log();
+
   notesPlayed += 1;
 }
+
+//**************************************************************************************************
+// checks if it's time to play the next note. returns boolean.
+function timeToSendNote() {
+  var info = GetTimingInfo();
+  return (
+    activeNotes.length !== 0 &&
+    dateNow() - timerStartTime > noteSendDelay &&
+    info.blockStartBeat > info.leftCycleBeat &&
+    notesPlayed < manualNotesPerBeat
+  );
+}
+
 //**************************************************************************************************
 // returns random beatmap array e.g. [0, 1, 1, 0] for 2 beats in 4 divisions
 function generateBeatMap(numNotes, beatDivision) {
@@ -233,17 +266,15 @@ function generateNoteDelays(beatMap, offsetAmount) {
 
 //**************************************************************************************************
 // gets params and returns beatmap
-function getBeatMap() {
-  beatDivision = GetParameter("Beat Division");
-  numNotes = GetParameter("Notes Per Beat");
-  return generateBeatMap(numNotes, beatDivision);
+function getBeatMap(notesPerBeat, beatDivision) {
+  return generateBeatMap(notesPerBeat, beatDivision);
 }
 
 //**************************************************************************************************
 // calculates offset amount and returns note delays
 function getNoteDelays() {
   var info = GetTimingInfo();
-  var offsetAmount = 60000 / info.tempo / GetParameter("Beat Division");
+  var offsetAmount = 60000 / info.tempo / manualBeatDivision;
   return generateNoteDelays(beatMap, offsetAmount);
 }
 //**************************************************************************************************
@@ -282,20 +313,17 @@ function isPlaying() {
 }
 
 //**************************************************************************************************
-// checks if it's time to play the next note. returns boolean.
-function timeToSendNote() {
-  return (
-    activeNotes.length !== 0 &&
-    dateNow() - timerStartTime > noteSendDelay &&
-    notesPlayed < manualNotesPerBeat
-  );
-}
-
-//**************************************************************************************************
 // gets current moment in milliseconds
 function dateNow() {
-  var timingInfo = GetTimingInfo();
-  return Math.round(timingInfo.blockStartBeat * (60000 / timingInfo.tempo));
+  return Date.now();
+  /*var info = GetTimingInfo();
+  if (accelerating) {
+    return Date.now()
+  }
+  
+  else {
+    return (info.blockStartBeat * (60000 / info.tempo))
+  }*/
 }
 
 //**************************************************************************************************
@@ -326,7 +354,6 @@ function getAndRemoveRandomItem(arr) {
 // LOGGING
 //**************************************************************************************************
 function log() {
-  var delay = noteSendDelay == 0 ? "000.00" : noteSendDelay.toFixed(2);
   Trace(
     "| beat: " +
       GetTimingInfo().blockStartBeat.toFixed(2) +
@@ -334,11 +361,14 @@ function log() {
       GetTimingInfo().tempo.toFixed(2) +
       " | numPlayed: " +
       notesPlayed +
+      " | division: " +
+      GetParameter("Beat Division") +
       " | noteSendDelay: " +
-      delay +
-      " | beatLength " +
-      (60000 / GetTimingInfo().tempo).toFixed(2) +
-      " | timerStartTime " +
+      offsets[notesPlayed].toFixed(2) +
+      " | offsets: [" +
+      offsets.map(o => o.toFixed(2)) +
+      "]" +
+      " | start " +
       timerStartTime +
       " | now: " +
       dateNow() +
@@ -362,9 +392,8 @@ function printBeatInfo() {
     " \n NEXT BEATMAP: [" +
       beatMap +
       "] " +
-      "  NEXT DELAYS: [" +
-      offsets.map(o => o.toFixed(2)) +
-      "]" +
+      "blockStart: " +
+      GetTimingInfo().blockStartBeat.toFixed(2) +
       "  TIMER: " +
       timerStartTime
   );
@@ -379,7 +408,7 @@ function printBeatInfo() {
 function printCycleInfo() {
   Trace(
     "**************************************************************************************************" +
-      dateNow()
+      timerStartTime
   );
 }
 
@@ -389,37 +418,31 @@ function sampleTempo() {
   var info = GetTimingInfo();
 
   if (currentTempoSample.length === 0) {
-    currentTempoSample = [info.blockStartBeat, info.tempo];
+    currentTempoSample = [dateNow(), info.tempo];
     prevTempoSample = currentTempoSample;
     return;
   }
 
-  currentTempoSample = [info.blockStartBeat, info.tempo];
+  currentTempoSample = [dateNow(), info.tempo];
 
-  if (currentTempoSample[0] - prevTempoSample[0] > 0.2) {
-    printSamples();
-
-    getAcceleration();
-
-    currentTempoSample = [info.blockStartBeat, info.tempo];
+  if (currentTempoSample[0] - prevTempoSample[0] > SAMPLE_THRESHOLD) {
+    currentTempoSample = [dateNow(), info.tempo];
 
     prevTempoSample = currentTempoSample;
   }
 }
 
 //**************************************************************************************************
-function getAcceleration() {
-  var tempo0 = prevTempoSample[1];
-  var tempo1 = currentTempoSample[1];
-  var time0 = prevTempoSample[0];
-  var time1 = currentTempoSample[0];
-  if (prevTempoSample.length === 0) {
-    return 0;
-  } else if (tempo1 - tempo0 <= 0) {
-    return 0;
+function updateAcceleration() {
+  var info = GetTimingInfo();
+
+  var prevTempo = prevTempoSample[1];
+  var currentTempo = currentTempoSample[1];
+
+  if (prevTempo === currentTempo) {
+    accelerating = false;
   } else {
-    var acceleration = (tempo1 - tempo0) / (time1 - time0);
-    return acceleration;
+    accelerating = true;
   }
 }
 
