@@ -44,12 +44,12 @@ var timerStartTime = 0;
 // the previous beat, used to check if it's the next beat
 var prevBlockBeat = 0;
 
-var accelerating = true;
+var accelerating = false;
 
 // distance from right cycle beat to trigger isCycleEnd
 var END_CYCLE_THRESHOLD = 0.05;
 
-var SAMPLE_THRESHOLD = 20;
+var SAMPLE_THRESHOLD = 1;
 
 // PARAMETER DEFINITIONS
 //**************************************************************************************************
@@ -94,19 +94,19 @@ var PluginParameters = [
 //**************************************************************************************************
 function ProcessMIDI() {
   offsets = getNoteDelays();
+  sampleTempo();
+  updateAcceleration();
 
   switch (true) {
     case isCycleEnd():
-      timerStartTime = Date.now();
+      timerStartTime = dateNow();
       // reset so that isNextBeat() fires on cycle beginning
       prevBlockBeat = 0;
       printCycleInfo();
       break;
 
     case isNextBeat():
-      updateAcceleration();
-
-      timerStartTime = dateNow();
+      //timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
 
       // set values for this beat
@@ -216,6 +216,13 @@ function sendNote() {
 // checks if it's time to play the next note. returns boolean.
 function timeToSendNote() {
   var info = GetTimingInfo();
+
+  // HACK: fix bad comparison when accelerating is wrongly false
+  if (dateNow() - timerStartTime < 0) {
+    _trace("now: " + dateNow() + " start: " + timerStartTime);
+    timerStartTime = info.blockStartBeat * (60000 / info.tempo);
+  }
+
   return (
     activeNotes.length !== 0 &&
     dateNow() - timerStartTime > noteSendDelay &&
@@ -331,15 +338,12 @@ function isPlaying() {
 //**************************************************************************************************
 // gets current moment in milliseconds
 function dateNow() {
-  return Date.now();
-  /*var info = GetTimingInfo();
+  var info = GetTimingInfo();
   if (accelerating) {
-    return Date.now()
+    return Date.now();
+  } else {
+    return info.blockStartBeat * (60000 / info.tempo);
   }
-  
-  else {
-    return (info.blockStartBeat * (60000 / info.tempo))
-  }*/
 }
 
 //**************************************************************************************************
@@ -384,6 +388,8 @@ function log(note) {
       " | noteSendDelay: " +
       offsets[notesPlayed].toFixed(2) +
       " | offsets: [" +
+      " | accel: " +
+      accelerating +
       offsets.map(o => o.toFixed(2)) +
       "]" +
       " | start " +
@@ -436,15 +442,15 @@ function sampleTempo() {
   var info = GetTimingInfo();
 
   if (currentTempoSample.length === 0) {
-    currentTempoSample = [dateNow(), info.tempo];
+    currentTempoSample = [info.blockStartBeat, info.tempo];
     prevTempoSample = currentTempoSample;
     return;
   }
 
-  currentTempoSample = [dateNow(), info.tempo];
+  currentTempoSample = [info.blockStartBeat, info.tempo];
 
   if (currentTempoSample[0] - prevTempoSample[0] > SAMPLE_THRESHOLD) {
-    currentTempoSample = [dateNow(), info.tempo];
+    currentTempoSample = [info.blockStartBeat, info.tempo];
 
     prevTempoSample = currentTempoSample;
   }
