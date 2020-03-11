@@ -6,7 +6,7 @@ Open Logic Pro and create a new track. Add the Scripter plugin to the track. Ope
 
 #### Description:
 
-DrumEggiator randomly chooses a single active MIDI note from the `Active Notes`, and then plays it at a randomized rhythm, which is controlled by two parameters: `Beat division` and `Number of notes`.
+DrumEggiator randomly chooses one or more active MIDI note from the `Active Notes` (the number of which is controlled by the `Simultaneous notes` parameter), and then plays them at a randomized rhythm, which is controlled by two parameters: `Beat division` and `Number of notes`.
 
 `Beat division` represents the number of possible notes in a beat. These notes will be equally spaced.
 
@@ -21,6 +21,8 @@ On a keyboard or in the piano roll, hold down some notes. Ex: C3 E3 G3.
 `Beat division`: 4
 
 `Number of notes`: 2
+
+`Simultaneous notes`: 1
 
 For each beat, a beat map is generated based on the Beat Division and Number of notes. With these example values, a beat map could be the following, with a note represented by a 1 and a rest represented by a 0:
 
