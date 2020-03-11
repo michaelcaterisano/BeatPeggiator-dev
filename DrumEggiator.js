@@ -72,12 +72,20 @@ var PluginParameters = [
     defaultValue: 4
   },
   {
+    name: "Simultaneous Notes",
+    type: "lin",
+    minValue: 1,
+    maxValue: 16,
+    numberOfSteps: 15,
+    defaultValue: 1
+  },
+  {
     name: "Note Length",
     type: "lin",
     unit: "ms",
     minValue: 10,
-    maxValue: 100,
-    numberOfSteps: 10,
+    maxValue: 2000,
+    numberOfSteps: 100,
     defaultValue: 10
   }
 ];
@@ -186,13 +194,21 @@ function ParameterChanged(param, value) {
 //**************************************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
-  var noteToSend = new NoteOn(getRandomFromArray(activeNotes));
-  noteToSend.send();
-  noteOffToSend = new NoteOff(noteToSend);
-  noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
+  var availableNotes = [...activeNotes];
+  var simultaneousNotes = GetParameter("Simultaneous Notes");
+  var iterations =
+    simultaneousNotes > activeNotes.length
+      ? activeNotes.length
+      : simultaneousNotes;
+  for (var i = 0; i < iterations; i++) {
+    Trace("LOOP: " + i);
+    var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
+    noteToSend.send();
+    noteOffToSend = new NoteOff(noteToSend);
+    noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-  log();
-
+    log(noteToSend);
+  }
   notesPlayed += 1;
 }
 
@@ -353,9 +369,11 @@ function getAndRemoveRandomItem(arr) {
 
 // LOGGING
 //**************************************************************************************************
-function log() {
+function log(note) {
   Trace(
-    "| beat: " +
+    "note: " +
+      MIDI.noteName(note.pitch) +
+      " | beat: " +
       GetTimingInfo().blockStartBeat.toFixed(2) +
       " | tempo: " +
       GetTimingInfo().tempo.toFixed(2) +
