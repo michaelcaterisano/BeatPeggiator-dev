@@ -35,6 +35,8 @@ var manualNotesPerBeat = 0; // still need this?
 
 var manualBeatDivision = 0;
 
+var manualActiveNotes = [];
+
 // time in milliseconds that next note should be played
 var noteSendDelay = 0;
 
@@ -106,6 +108,7 @@ function ProcessMIDI() {
       break;
 
     case isNextBeat():
+      manualActiveNotes = [...activeNotes];
       timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
 
@@ -132,6 +135,8 @@ function ProcessMIDI() {
       offsets = getNoteDelays();
 
       sendNote();
+
+      notesPlayed += 1;
 
       timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
@@ -191,25 +196,25 @@ function ParameterChanged(param, value) {
 }
 
 // OTHER FUNCTIONS
-//**************************************************************************************************
+//************************ **************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
-  var availableNotes = [...activeNotes];
-  var simultaneousNotes = GetParameter("Simultaneous Notes");
-  var iterations =
-    simultaneousNotes > activeNotes.length
-      ? activeNotes.length
-      : simultaneousNotes;
-  for (var i = 0; i < iterations; i++) {
-    Trace("LOOP: " + i);
-    var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
-    noteToSend.send();
-    noteOffToSend = new NoteOff(noteToSend);
-    noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
+  var availableNotes = [...manualActiveNotes];
+  if (availableNotes.length !== 0) {
+    var simultaneousNotes = GetParameter("Simultaneous Notes");
+    var iterations =
+      simultaneousNotes > activeNotes.length
+        ? activeNotes.length
+        : simultaneousNotes;
+    for (var i = 0; i < iterations; i++) {
+      var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
+      noteToSend.send();
+      noteOffToSend = new NoteOff(noteToSend);
+      noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-    log(noteToSend);
+      //log(noteToSend);
+    }
   }
-  notesPlayed += 1;
 }
 
 //**************************************************************************************************
@@ -326,6 +331,8 @@ function isCycleEnd() {
 //**************************************************************************************************
 // tests if position is on the beat, returns boolean
 function isNextBeat() {
+  var info = GetTimingInfo();
+
   return Math.floor(GetTimingInfo().blockStartBeat) > prevBlockBeat;
 }
 
