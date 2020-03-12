@@ -15,6 +15,8 @@ var NeedsTimingInfo = true;
 // array that will hold currently active MIDI notes
 var activeNotes = [];
 
+var availableNotes = [];
+
 // array that will hold offset amounts, or 1 / beatDivision
 var offsets = [];
 
@@ -75,8 +77,8 @@ var PluginParameters = [
     name: "Simultaneous Notes",
     type: "lin",
     minValue: 1,
-    maxValue: 16,
-    numberOfSteps: 15,
+    maxValue: 8,
+    numberOfSteps: 7,
     defaultValue: 1
   },
   {
@@ -93,7 +95,9 @@ var PluginParameters = [
 // LOGIC SCRIPTER FUNCTIONS
 //**************************************************************************************************
 function ProcessMIDI() {
+  var info = GetTimingInfo();
   offsets = getNoteDelays();
+
   sampleTempo();
   updateAcceleration();
 
@@ -105,9 +109,8 @@ function ProcessMIDI() {
       printCycleInfo();
       break;
 
-    case isNextBeat():
-      //timerStartTime = dateNow();
-      noteSendDelay = offsets[notesPlayed];
+    case isNextBeat() && isPlaying():
+      availableNotes = [...activeNotes];
 
       // set values for this beat
       manualNotesPerBeat = GetParameter("Notes Per Beat");
@@ -123,15 +126,41 @@ function ProcessMIDI() {
 
       // log info
       printBeatInfo();
-      break;
+    //break;
 
-    case timeToSendNote() && !isCycleEnd():
-      if (isCycleEnd()) {
-        break;
-      }
+    case isNextBeat() && !isPlaying():
+      availableNotes = [...activeNotes];
+
+      // set values for this beat
+      manualNotesPerBeat = GetParameter("Notes Per Beat");
+      manualBeatDivision = GetParameter("Beat Division");
+
+      // generate beatMap and delays
+      beatMap = getBeatMap(manualNotesPerBeat, manualBeatDivision);
       offsets = getNoteDelays();
 
-      sendNote();
+    //notesPlayed = 0;
+    //noteSendDelay = offsets[notesPlayed];
+    //prevBlockBeat = Math.floor(GetTimingInfo().blockStartBeat);
+
+    // log info
+    //printBeatInfo();
+    //break;
+
+    case timeToSendNote():
+      var info = GetTimingInfo();
+
+      offsets = getNoteDelays();
+
+      sendNote(availableNotes);
+
+      //if (dateNow() - timerStartTime > noteSendDelay) {sendNote(availableNotes)}
+
+      if (notesPlayed > GetParameter("Notes Per Beat")) {
+        notesPlayed = 0;
+      } else {
+        notesPlayed += 1;
+      }
 
       timerStartTime = dateNow();
       noteSendDelay = offsets[notesPlayed];
@@ -155,10 +184,29 @@ function HandleMIDI(note) {
         activeNotes.splice(i, 1);
       }
     }
+
+    if (activeNotes.length === 0) {
+      MIDI.allNotesOff();
+    }
   }
 
   if (activeNotes.length === 0) {
     timerStartTime = dateNow();
+  }
+}
+
+//**************************************************************************************************
+function ParameterChanged(param, value) {
+  if (param == 0) {
+    if (value < GetParameter("Notes Per Beat")) {
+      SetParameter(1, value);
+    }
+  }
+
+  if (param == 1) {
+    if (value > GetParameter("Beat Division")) {
+      SetParameter("Beat Division", value);
+    }
   }
 }
 
@@ -173,43 +221,26 @@ function Reset() {
   noteSendDelay = 0;
 }
 
-//**************************************************************************************************
-function ParameterChanged(param, value) {
-  if (param == 0) {
-    // Beat Division
-    if (value < GetParameter("Notes Per Beat")) {
-      SetParameter(1, value);
-    } else {
-    }
-  }
-  if (param == 1) {
-    if (value > GetParameter("Beat Division")) {
-      SetParameter("Beat Division", value);
-    } else {
-    }
-  }
-}
-
 // OTHER FUNCTIONS
 //**************************************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
-function sendNote() {
-  var availableNotes = [...activeNotes];
+function sendNote(availableNotes) {
+  availableNotesCopy = [...availableNotes];
   var simultaneousNotes = GetParameter("Simultaneous Notes");
   var iterations =
-    simultaneousNotes > activeNotes.length
-      ? activeNotes.length
+    simultaneousNotes > availableNotesCopy.length
+      ? availableNotesCopy.length
       : simultaneousNotes;
+
+  // send simultaeous notes if if there are any
   for (var i = 0; i < iterations; i++) {
-    Trace("LOOP: " + i);
-    var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
+    var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotesCopy));
     noteToSend.send();
     noteOffToSend = new NoteOff(noteToSend);
     noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
     log(noteToSend);
   }
-  notesPlayed += 1;
 }
 
 //**************************************************************************************************
@@ -223,8 +254,13 @@ function timeToSendNote() {
     timerStartTime = info.blockStartBeat * (60000 / info.tempo);
   }
 
+  if (!info.playing) {
+    noteSendDelay = 0;
+    timerStartTime = 1;
+    return true;
+    //return dateNow() - timerStartTime > noteSendDelay;
+  }
   return (
-    activeNotes.length !== 0 &&
     dateNow() - timerStartTime > noteSendDelay &&
     info.blockStartBeat > info.leftCycleBeat &&
     notesPlayed < manualNotesPerBeat
@@ -326,6 +362,11 @@ function isCycleEnd() {
 //**************************************************************************************************
 // tests if position is on the beat, returns boolean
 function isNextBeat() {
+  var info = GetTimingInfo();
+
+  if (!info.playing) {
+    return true;
+  }
   return Math.floor(GetTimingInfo().blockStartBeat) > prevBlockBeat;
 }
 
@@ -386,18 +427,18 @@ function log(note) {
       " | division: " +
       GetParameter("Beat Division") +
       " | noteSendDelay: " +
-      offsets[notesPlayed].toFixed(2) +
+      noteSendDelay +
       " | offsets: [" +
-      " | accel: " +
-      accelerating +
+      /*" | accel: " +
+      accelerating +*/
       offsets.map(o => o.toFixed(2)) +
       "]" +
       " | start " +
-      timerStartTime +
+      timerStartTime.toFixed(2) +
       " | now: " +
-      dateNow() +
+      dateNow().toFixed(2) +
       " | diff: " +
-      (dateNow() - timerStartTime)
+      (dateNow() - timerStartTime).toFixed(2)
   );
 }
 
