@@ -163,6 +163,7 @@ function HandleMIDI(note) {
   }
 
   if (activeNotes.length === 0) {
+    manualActiveNotes = [];
     timerStartTime = dateNow();
   }
 }
@@ -203,8 +204,8 @@ function sendNote() {
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
     var iterations =
-      simultaneousNotes > activeNotes.length
-        ? activeNotes.length
+      simultaneousNotes > manualActiveNotes.length
+        ? manualActiveNotes.length
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
       var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
@@ -212,7 +213,9 @@ function sendNote() {
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-      //log(noteToSend);
+      Trace("[" + manualActiveNotes.map(note => note.pitch) + "]");
+
+      log(noteToSend);
     }
   }
 }
@@ -229,7 +232,7 @@ function timeToSendNote() {
   }
 
   return (
-    activeNotes.length !== 0 &&
+    manualActiveNotes.length !== 0 &&
     dateNow() - timerStartTime > noteSendDelay &&
     info.blockStartBeat > info.leftCycleBeat &&
     notesPlayed < manualNotesPerBeat
@@ -395,8 +398,6 @@ function log(note) {
       " | noteSendDelay: " +
       offsets[notesPlayed].toFixed(2) +
       " | offsets: [" +
-      " | accel: " +
-      accelerating +
       offsets.map(o => o.toFixed(2)) +
       "]" +
       " | start " +
