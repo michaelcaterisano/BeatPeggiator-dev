@@ -1,12 +1,12 @@
-### DrumEggiator. A scripter plugin for Logic Pro.
+### BeatPeggiator. A scripter plugin for Logic Pro.
 
 #### Installation:
 
-Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file `DrumEggiator.js`, then hit `Run Script`. Don't forget to hit `Run Script`! Otherwise the code will not run. Close the editor and choose "Save as" from the Scripter dropdown menu.
+Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file `BeatPeggiator.js`, then hit `Run Script`. Don't forget to hit `Run Script`! Otherwise the code will not run. Close the editor and choose "Save as" from the Scripter dropdown menu.
 
 #### Description:
 
-DrumEggiator randomly chooses one or more active MIDI note from the `Active Notes` (the number of which is controlled by the `Simultaneous notes` parameter), and then plays them at a randomized rhythm, which is controlled by two parameters: `Beat division` and `Number of notes`.
+BeatPeggiator randomly chooses one or more active MIDI note from the `Active Notes` (the number of which is controlled by the `Simultaneous notes` parameter), and then plays them at a randomized rhythm, which is controlled by two parameters: `Beat division` and `Number of notes`.
 
 `Beat division` represents the number of possible notes in a beat. These notes will be equally spaced.
 
