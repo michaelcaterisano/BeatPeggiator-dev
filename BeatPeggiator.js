@@ -208,14 +208,16 @@ function sendNote() {
         ? manualActiveNotes.length
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
-      var noteToSend = new NoteOn(getAndRemoveRandomItem(availableNotes));
+      var selectedNote = getAndRemoveRandomItem(availableNotes);
+
+      var noteToSend = new NoteOn();
+      noteToSend.pitch = selectedNote.pitch;
       noteToSend.send();
+
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
 
-      Trace("[" + manualActiveNotes.map(note => note.pitch) + "]");
-
-      log(noteToSend);
+      //log(noteToSend);
     }
   }
 }
@@ -384,7 +386,7 @@ function getAndRemoveRandomItem(arr) {
 // LOGGING
 //**************************************************************************************************
 function log(note) {
-  Trace(
+  /*Trace(
     "note: " +
       MIDI.noteName(note.pitch) +
       " | beat: " +
@@ -407,6 +409,9 @@ function log(note) {
       " | diff: " +
       (dateNow() - timerStartTime)
   );
+  */
+
+  Trace(note);
 }
 
 //**************************************************************************************************
