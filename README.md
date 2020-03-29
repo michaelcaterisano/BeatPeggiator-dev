@@ -1,6 +1,6 @@
 ### BeatPeggiator. A scripter plugin for Logic Pro.
 
-BeatPeggiator is under active development. It has only been tested with Logic 10.4.4 and may malfunction with other versions of Logic.
+BeatPeggiator is under active development. Feel free to reach out with feature requests and bug reports.
 
 #### Installation:
 
