@@ -83,12 +83,22 @@ var PluginParameters = [
   },
   {
     name: "Note Length",
-    type: "lin",
-    unit: "ms",
-    minValue: 10,
-    maxValue: 2000,
-    numberOfSteps: 100,
-    defaultValue: 10
+    unit: "%",
+    type: "linear",
+    minValue: 1,
+    maxValue: 200,
+    defaultValue: 100.0,
+    numberOfSteps: 199
+  },
+
+  {
+    name: "Random Length",
+    unit: "%",
+    type: "linear",
+    minValue: 0,
+    maxValue: 200,
+    numberOfSteps: 200,
+    defaultValue: 0
   }
 ];
 
@@ -200,7 +210,15 @@ function ParameterChanged(param, value) {
 //************************ **************************************************************************
 // sends a noteOn, then creates and sends a noteOff after noteLength time
 function sendNote() {
+  var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
+  var division = GetParameter("Beat Division");
+  var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
+  var randomLength =
+    Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
+
+  Trace("noteLength " + noteLength + " randomLength: " + randomLength);
+
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
     var iterations =
@@ -215,7 +233,9 @@ function sendNote() {
       noteToSend.send();
 
       noteOffToSend = new NoteOff(noteToSend);
-      noteOffToSend.sendAfterMilliseconds(GetParameter("Note Length"));
+      noteOffToSend.sendAfterMilliseconds(
+        (noteLength + randomLength) * (60000 / info.tempo)
+      );
 
       //log(noteToSend);
     }
