@@ -107,14 +107,6 @@ function ProcessMIDI() {
       );
     }
 
-    /*  if (musicInfo.blockStartBeat < musicInfo.leftCycleBeat || currentPosition === 0) {
-          return Math.ceil(musicInfo.blockStartBeat) + delay;
-        } else {
-          return Math.floor(musicInfo.blockStartBeat) + delay;
-        }
-        
-        */
-
     var nextBeat = beatPositions[currentPosition];
 
     // create state object
@@ -130,8 +122,9 @@ function ProcessMIDI() {
         nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
     };
 
-    if (nextBeat < musicInfo.blockStartBeat)
+    if (nextBeat < musicInfo.blockStartBeat) {
       Trace("MISSED NOTE: " + JSON.stringify(state));
+    }
 
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
@@ -143,7 +136,8 @@ function ProcessMIDI() {
 
     // loop through the beats that fall within this buffer
     while (
-      (nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd) ||
+      (nextBeat >= musicInfo.blockStartBeat &&
+        nextBeat < lookAheadEnd + 0.05) ||
       // including beats that wrap around the cycle point
       (musicInfo.cycling && nextBeat < cycleEnd)
     ) {
