@@ -12,6 +12,7 @@ var currentPosition = 0;
 var beatMap = [];
 var delays = [];
 var beatPositions = [];
+var newBeat = true;
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -26,13 +27,7 @@ function HandleMIDI(event) {
 
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
-      beatPositions = delays.map((delay) => {
-        if (musicInfo.blockStartBeat < musicInfo.leftCycleBeat) {
-          return Math.ceil(musicInfo.blockStartBeat) + delay;
-        } else {
-          return Math.floor(musicInfo.blockStartBeat) + delay;
-        }
-      });
+      beatPositions = getBeatPositions();
     }
   } else if (event instanceof NoteOff) {
     // remove note from array
@@ -91,20 +86,13 @@ function ProcessMIDI() {
     var lookAheadEnd = musicInfo.blockEndBeat;
     //nextBeat = Math.ceil(musicInfo.blockStartBeat * division) / division;
 
-    currentPosition = currentPosition >= delays.length ? 0 : currentPosition;
-
     // calculate new positions if currentPosition is 0
 
-    if (currentPosition === 0) {
+    if (newBeat) {
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
-      beatPositions = delays.map((delay) => {
-        return Math.ceil(musicInfo.blockStartBeat) + delay;
-      });
-    } else {
-      beatPositions = delays.map(
-        (delay) => Math.floor(musicInfo.blockStartBeat) + delay
-      );
+      beatPositions = getBeatPositions();
+      newBeat = false;
     }
 
     var nextBeat = beatPositions[currentPosition];
@@ -114,13 +102,15 @@ function ProcessMIDI() {
       BEAT: nextBeat,
       start: musicInfo.blockStartBeat.toFixed(4),
       end: musicInfo.blockEndBeat.toFixed(4),
-      //beatMap: beatMap,
+      beatMap: beatMap,
       //delays: delays.map(delay => delay.toFixed(2)),
       pos: beatPositions,
       curPos: currentPosition,
       noteInSlice:
         nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
     };
+
+    Trace(JSON.stringify(state));
 
     if (nextBeat < musicInfo.blockStartBeat) {
       Trace("MISSED NOTE: " + JSON.stringify(state));
@@ -129,6 +119,7 @@ function ProcessMIDI() {
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
       if (lookAheadEnd >= musicInfo.rightCycleBeat) {
+        beatPositions = getBeatPositions();
         var cycleBeats = musicInfo.rightCycleBeat - musicInfo.leftCycleBeat;
         var cycleEnd = lookAheadEnd - cycleBeats;
       }
@@ -136,14 +127,14 @@ function ProcessMIDI() {
 
     // loop through the beats that fall within this buffer
     while (
-      (nextBeat >= musicInfo.blockStartBeat &&
-        nextBeat < lookAheadEnd + 0.05) ||
+      (nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd) ||
       // including beats that wrap around the cycle point
       (musicInfo.cycling && nextBeat < cycleEnd)
     ) {
       // adjust for cycle
-      if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat)
+      if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
         nextBeat -= cycleBeats;
+      }
 
       // calculate step
       var step = Math.floor(nextBeat / (1 / division) - division);
@@ -161,12 +152,40 @@ function ProcessMIDI() {
 
       // increment curPtr
       currentPosition += 1;
+      if (currentPosition >= delays.length) {
+        currentPosition = 0;
+        // get new beatPositions
+        newBeat = true;
+      }
 
       nextBeat = beatPositions[currentPosition];
 
       Trace("END: " + JSON.stringify(state));
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+function getBeatPositions() {
+  var musicInfo = GetTimingInfo();
+  var positions = [];
+  positions = delays.map((delay) => {
+    // left of cycle
+    if (
+      musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
+      currentPosition === 0
+    ) {
+      return Math.ceil(musicInfo.blockStartBeat) + delay;
+    } else if (musicInfo.blockEndBeat > musicInfo.rightCycleBeat) {
+      return musicInfo.leftCycleBeat + delay;
+    } else if (currentPosition === 0) {
+      return Math.ceil;
+    } else {
+      return Math.floor(musicInfo.blockStartBeat) + delay;
+    }
+  });
+
+  return positions;
 }
 
 //-----------------------------------------------------------------------------
@@ -222,28 +241,15 @@ function generateBeatMap(numNotes, beatDivision) {
 // returns array of note delays in milliseconds,
 //e.g. [0, 255, 255, 255] for beatmap [1, 1, 1, 1] at 60bpm
 function generateNoteDelays(beatMap, offsetAmount) {
-  var sum = 0;
+  var output = [];
 
-  var offsetReducer = (output, curr, index) => {
-    switch (true) {
-      case index === 0 && curr === 0:
-        break;
-      case index === 0 && curr === 1:
-        output.push(sum);
-        break;
-      case curr === 0:
-        sum += offsetAmount;
-        break;
-      case curr === 1:
-        sum += offsetAmount;
-        output.push(sum);
-        //sum = 0;
-        break;
+  for (var i = 0; i < beatMap.length; i++) {
+    if (beatMap[i] === 1) {
+      output.push(offsetAmount * i);
     }
-    return output;
-  };
+  }
 
-  return beatMap.reduce(offsetReducer, []);
+  return output;
 }
 
 var PluginParameters = [
