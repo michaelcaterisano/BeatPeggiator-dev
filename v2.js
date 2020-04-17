@@ -9,11 +9,31 @@
 var NeedsTimingInfo = true;
 var activeNotes = [];
 var currentPosition = 0;
+var beatMap = [];
+var delays = [];
+var beatPositions = [];
 
 function HandleMIDI(event) {
+  var musicInfo = GetTimingInfo();
+
   if (event instanceof NoteOn) {
     // add note to array
     activeNotes.push(event);
+
+    if (activeNotes.length === 1) {
+      var numBeats = GetParameter("Num Beats");
+      var division = GetParameter("Beat Division");
+
+      beatMap = generateBeatMap(numBeats, division);
+      delays = generateNoteDelays(beatMap, 1 / division);
+      beatPositions = delays.map((delay) => {
+        if (musicInfo.blockStartBeat < musicInfo.leftCycleBeat) {
+          return Math.ceil(musicInfo.blockStartBeat) + delay;
+        } else {
+          return Math.floor(musicInfo.blockStartBeat) + delay;
+        }
+      });
+    }
   } else if (event instanceof NoteOff) {
     // remove note from array
     for (i = 0; i < activeNotes.length; i++) {
@@ -57,6 +77,7 @@ function ProcessMIDI() {
   if (activeNotes.length != 0) {
     // get parameters
     var division = GetParameter("Beat Division");
+    var numBeats = GetParameter("Num Beats");
     var noteOrder = GetParameter("Note Order");
     var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
     var randomLength =
@@ -68,12 +89,49 @@ function ProcessMIDI() {
 
     // calculate beat to schedule
     var lookAheadEnd = musicInfo.blockEndBeat;
-    nextBeat = Math.ceil(musicInfo.blockStartBeat * division) / division;
-    var beatPositions = [129, 129.2, 129.6];
-    currentPosition =
-      currentPosition >= beatPositions.length ? 0 : currentPosition;
+    //nextBeat = Math.ceil(musicInfo.blockStartBeat * division) / division;
+
+    currentPosition = currentPosition >= delays.length ? 0 : currentPosition;
+
+    // calculate new positions if currentPosition is 0
+
+    if (currentPosition === 0) {
+      beatMap = generateBeatMap(numBeats, division);
+      delays = generateNoteDelays(beatMap, 1 / division);
+      beatPositions = delays.map((delay) => {
+        return Math.ceil(musicInfo.blockStartBeat) + delay;
+      });
+    } else {
+      beatPositions = delays.map(
+        (delay) => Math.floor(musicInfo.blockStartBeat) + delay
+      );
+    }
+
+    /*  if (musicInfo.blockStartBeat < musicInfo.leftCycleBeat || currentPosition === 0) {
+          return Math.ceil(musicInfo.blockStartBeat) + delay;
+        } else {
+          return Math.floor(musicInfo.blockStartBeat) + delay;
+        }
+        
+        */
+
     var nextBeat = beatPositions[currentPosition];
-    //var nextBeat = 129
+
+    // create state object
+    var state = {
+      BEAT: nextBeat,
+      start: musicInfo.blockStartBeat.toFixed(4),
+      end: musicInfo.blockEndBeat.toFixed(4),
+      //beatMap: beatMap,
+      //delays: delays.map(delay => delay.toFixed(2)),
+      pos: beatPositions,
+      curPos: currentPosition,
+      noteInSlice:
+        nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
+    };
+
+    if (nextBeat < musicInfo.blockStartBeat)
+      Trace("MISSED NOTE: " + JSON.stringify(state));
 
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
@@ -89,7 +147,6 @@ function ProcessMIDI() {
       // including beats that wrap around the cycle point
       (musicInfo.cycling && nextBeat < cycleEnd)
     ) {
-      Trace("nextBeat in while: " + nextBeat);
       // adjust for cycle
       if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat)
         nextBeat -= cycleBeats;
@@ -111,7 +168,9 @@ function ProcessMIDI() {
       // increment curPtr
       currentPosition += 1;
 
-      nextBeat = Math.ceil(nextBeat * division) / division;
+      nextBeat = beatPositions[currentPosition];
+
+      Trace("END: " + JSON.stringify(state));
     }
   }
 }
@@ -130,9 +189,80 @@ function chooseNote(noteOrder, step) {
 }
 
 //-----------------------------------------------------------------------------
+function getAndRemoveRandomItem(arr) {
+  if (arr.length !== 0) {
+    var index = Math.floor(Math.random() * arr.length);
+    return arr.splice(index, 1)[0];
+  } else {
+    console.log("empty array");
+  }
+}
+//-----------------------------------------------------------------------------
+function generateBeatMap(numNotes, beatDivision) {
+  // create array of size beatDivision and fill with index numbers
+  var arr = new Array(beatDivision);
+  for (var i = 0; i < beatDivision; i++) {
+    arr[i] = i;
+  }
+
+  // randomly choose numNotes number of indices from array
+  // these will be the beatDivisions that have a note
+  var indices = [];
+  for (var i = 0; i < numNotes; i++) {
+    var index = getAndRemoveRandomItem(arr);
+    indices.push(index);
+  }
+
+  // create output array like [1, 0, 1, 1] where 1 represents a note
+  // 0 represents a rest, and the array length represents the number of
+  // beat divisions
+  var output = new Array(beatDivision).fill(0);
+  for (var i = 0; i < indices.length; i++) {
+    var index = indices[i];
+    output[index] = 1;
+  }
+  return output;
+}
+
+//-----------------------------------------------------------------------------
+// returns array of note delays in milliseconds,
+//e.g. [0, 255, 255, 255] for beatmap [1, 1, 1, 1] at 60bpm
+function generateNoteDelays(beatMap, offsetAmount) {
+  var sum = 0;
+
+  var offsetReducer = (output, curr, index) => {
+    switch (true) {
+      case index === 0 && curr === 0:
+        break;
+      case index === 0 && curr === 1:
+        output.push(sum);
+        break;
+      case curr === 0:
+        sum += offsetAmount;
+        break;
+      case curr === 1:
+        sum += offsetAmount;
+        output.push(sum);
+        //sum = 0;
+        break;
+    }
+    return output;
+  };
+
+  return beatMap.reduce(offsetReducer, []);
+}
+
 var PluginParameters = [
   {
     name: "Beat Division",
+    type: "linear",
+    minValue: 1,
+    maxValue: 16,
+    numberOfSteps: 15,
+    defaultValue: 4,
+  },
+  {
+    name: "Num Beats",
     type: "linear",
     minValue: 1,
     maxValue: 16,
