@@ -119,7 +119,9 @@ function ProcessMIDI() {
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
       if (lookAheadEnd >= musicInfo.rightCycleBeat) {
-        beatPositions = getBeatPositions();
+        beatPositions = delays.map((delay) => {
+          return musicInfo.leftCycleBeat + delay;
+        });
         var cycleBeats = musicInfo.rightCycleBeat - musicInfo.leftCycleBeat;
         var cycleEnd = lookAheadEnd - cycleBeats;
       }
@@ -176,7 +178,8 @@ function getBeatPositions() {
       currentPosition === 0
     ) {
       return Math.ceil(musicInfo.blockStartBeat) + delay;
-    } else if (musicInfo.blockEndBeat > musicInfo.rightCycleBeat) {
+    } else if (musicInfo.blockEndBeat >= musicInfo.rightCycleBeat) {
+      Trace("outside to right");
       return musicInfo.leftCycleBeat + delay;
     } else if (currentPosition === 0) {
       return Math.ceil;
