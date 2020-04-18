@@ -42,15 +42,6 @@ function HandleMIDI(event) {
   if (event instanceof NoteOn) {
     // add note to array
     activeNotes.push(event);
-
-    // if (activeNotes.length === 1) {
-    //   var numBeats = GetParameter("Num Beats");
-    //   var division = GetParameter("Beat Division");
-
-    //   beatMap = generateBeatMap(numBeats, division);
-    //   delays = generateNoteDelays(beatMap, 1 / division);
-    //   beatPositions = getBeatPositions();
-    // }
   } else if (event instanceof NoteOff) {
     // remove note from array
     for (i = 0; i < activeNotes.length; i++) {
@@ -62,10 +53,6 @@ function HandleMIDI(event) {
   }
   // pass non-note events through
   else event.send();
-
-  // if (activeNotes.length === 0) {
-  //   manualActiveNotes = [];
-  // }
 
   // sort array of active notes
   activeNotes.sort(sortByPitchAscending);
@@ -105,17 +92,13 @@ function ProcessMIDI() {
       Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
     var randomDelay =
       Math.random() * ((GetParameter("Random Delay") / 100) * (1 / division));
-    // var randomOctave =
-    //   Math.floor(Math.random() * GetParameter("Random Octave")) * 12;
 
     // calculate beat to schedule
     var lookAheadEnd = musicInfo.blockEndBeat;
-    //nextBeat = Math.ceil(musicInfo.blockStartBeat * division) / division;
 
-    // calculate new positions if currentPosition is 0
-
-    if (newBeat || lookAheadEnd >= musicInfo.rightCycleBeat) {
-      Trace("NEW BEAT");
+    // calculate new positions if new beat
+    if (newBeat) {
+      Trace("--------------------");
       manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
@@ -124,10 +107,6 @@ function ProcessMIDI() {
     }
 
     var nextBeat = beatPositions[currentPosition];
-
-    // if (nextBeat < musicInfo.blockStartBeat) {
-    //   Trace("MISSED NOTE: " + JSON.stringify(state));
-    // }
 
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
@@ -146,37 +125,15 @@ function ProcessMIDI() {
       // including beats that wrap around the cycle point
       (musicInfo.cycling && nextBeat < cycleEnd)
     ) {
-      state = {
-        BEAT: nextBeat,
-        start: musicInfo.blockStartBeat.toFixed(4),
-        end: musicInfo.blockEndBeat.toFixed(4),
-        beatMap: beatMap,
-        //delays: delays.map(delay => delay.toFixed(2)),
-        pos: beatPositions,
-        curPos: currentPosition,
-        noteInSlice:
-          nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
-      };
-
-      Trace("WHILE: " + JSON.stringify(state));
       // adjust for cycle
       if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
         nextBeat -= cycleBeats;
+        // wrap beatPositions around cycle
         beatPositions = delays.map((delay) => {
           return musicInfo.leftCycleBeat + delay;
         });
       }
 
-      // calculate step
-      // var step = Math.floor(nextBeat / (1 / division) - division);
-      // var chosenNote = chooseNote(noteOrder, step);
-
-      // send events
-      // var noteOn = new NoteOn(chosenNote);
-      // noteOn.pitch = MIDI.normalizeData(noteOn.pitch + randomOctave);
-      // noteOn.sendAtBeat(nextBeat + randomDelay);
-      // var noteOff = new NoteOff(noteOn);
-      // noteOff.sendAtBeat(nextBeat + randomDelay + noteLength + randomLength);
       sendNote(nextBeat, randomDelay);
       if (numBeats === 1) {
         newBeat = true;
@@ -186,49 +143,17 @@ function ProcessMIDI() {
       // advance to next beat
       nextBeat += 0.001;
 
-      // if (delays.length === 1) {
-      //   beatPositions = delays.map((delay) => {
-      //     return Math.ceil(musicInfo.blockStartBeat) + delay;
-      //   });
-      //   newBeat = true; // ????
-      //   return;
-      // }
-      // // increment curPtr
+      // if position out of bounds, reset and break
       if (currentPosition >= delays.length - 1) {
         currentPosition = 0;
-        beatPositions = getBeatPositions(nextBeat);
+        //beatPositions = getBeatPositions();
         newBeat = true;
-        nextBeat = beatPositions[currentPosition];
-        Trace("out of bounds" + beatPositions);
+        //nextBeat = beatPositions[currentPosition];
         break;
       } else {
         currentPosition += 1;
         nextBeat = beatPositions[currentPosition];
       }
-
-      // if (currentPosition >= delays.length && numBeats !== 1) {
-      //   currentPosition = 0;
-      //   beatPositions = delays.map((delay) => {
-      //     return Math.ceil(musicInfo.blockStartBeat) + delay;
-      //   });
-      //   newBeat = true;
-      // }
-
-      // nextBeat = beatPositions[currentPosition];
-
-      state = {
-        BEAT: nextBeat,
-        start: musicInfo.blockStartBeat.toFixed(4),
-        end: musicInfo.blockEndBeat.toFixed(4),
-        beatMap: beatMap,
-        //delays: delays.map(delay => delay.toFixed(2)),
-        pos: beatPositions,
-        curPos: currentPosition,
-        noteInSlice:
-          nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
-      };
-
-      Trace("END: " + JSON.stringify(state));
     }
   }
 }
@@ -250,7 +175,7 @@ function getBeatPositions(nextBeat) {
       return Math.floor(musicInfo.blockStartBeat) + delay;
     }
   });
-
+  Trace("GET POSITIONS: [" + positions + "]");
   return positions;
 }
 
@@ -274,7 +199,15 @@ function sendNote(nextBeat, randomDelay) {
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
       noteToSend.sendAtBeat(nextBeat + randomDelay);
-      Trace(noteToSend);
+      Trace(
+        "NOTE: " +
+          selectedNote.pitch +
+          " | BEAT: " +
+          nextBeat +
+          " | POSITIONS: [" +
+          beatPositions +
+          "]"
+      );
 
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(
@@ -285,17 +218,17 @@ function sendNote(nextBeat, randomDelay) {
 }
 
 //-----------------------------------------------------------------------------
-var noteOrders = ["up", "down", "random"];
+// var noteOrders = ["up", "down", "random"];
 
-function chooseNote(noteOrder, step) {
-  var order = noteOrders[noteOrder];
-  var length = activeNotes.length;
-  if (order == "up") return activeNotes[step % length];
-  if (order == "down")
-    return activeNotes[Math.abs((step % length) - (length - 1))];
-  if (order == "random") return activeNotes[Math.floor(Math.random() * length)];
-  else return 0;
-}
+// function chooseNote(noteOrder, step) {
+//   var order = noteOrders[noteOrder];
+//   var length = activeNotes.length;
+//   if (order == "up") return activeNotes[step % length];
+//   if (order == "down")
+//     return activeNotes[Math.abs((step % length) - (length - 1))];
+//   if (order == "random") return activeNotes[Math.floor(Math.random() * length)];
+//   else return 0;
+// }
 
 //-----------------------------------------------------------------------------
 function getAndRemoveRandomItem(arr) {
@@ -303,7 +236,6 @@ function getAndRemoveRandomItem(arr) {
     var index = Math.floor(Math.random() * arr.length);
     return arr.splice(index, 1)[0];
   } else {
-    console.log("empty array");
   }
 }
 //-----------------------------------------------------------------------------
@@ -400,16 +332,6 @@ var PluginParameters = [
     defaultValue: 1,
   },
 
-  // {
-  //   name: "Note Order",
-  //   type: "menu",
-  //   valueStrings: noteOrders,
-  //   minValue: 0,
-  //   maxValue: 2,
-  //   numberOfSteps: 3,
-  //   defaultValue: 0,
-  // },
-
   {
     name: "Note Length",
     unit: "%",
@@ -439,13 +361,4 @@ var PluginParameters = [
     numberOfSteps: 200,
     defaultValue: 0,
   },
-
-  // {
-  //   name: "Random Octave",
-  //   type: "linear",
-  //   minValue: 1,
-  //   maxValue: 4,
-  //   defaultValue: 1,
-  //   numberOfSteps: 3,
-  // },
 ];
