@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// Simple Arpeggiator
+// BeatPeggiator 2.0
 //-----------------------------------------------------------------------------
 /*	
 		Held notes are tracked in a global array in the HandleMIDI() callback.
@@ -14,27 +14,6 @@ var delays = [];
 var beatPositions = [];
 var newBeat = true;
 var manualActiveNotes = [];
-
-var state = {
-  BEAT: null,
-  start: null,
-  end: null,
-  beatMap: null,
-  //delays: delays.map(delay => delay.toFixed(2)),
-  pos: null,
-  curPos: null,
-  noteInSlice: null,
-};
-
-function Reset() {
-  activeNotes = [];
-  currentPosition = 0;
-  beatMap = [];
-  delays = [];
-  beatPositions = [];
-  newBeat = true;
-  manualActiveNotes = [];
-}
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -55,18 +34,6 @@ function HandleMIDI(event) {
   if (activeNotes.length === 0) {
     Reset();
   }
-  // pass non-note events through
-  //else event.send();
-
-  // sort array of active notes
-  activeNotes.sort(sortByPitchAscending);
-}
-
-//-----------------------------------------------------------------------------
-function sortByPitchAscending(a, b) {
-  if (a.pitch < b.pitch) return -1;
-  if (a.pitch > b.pitch) return 1;
-  return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -90,10 +57,6 @@ function ProcessMIDI() {
     // get parameters
     var division = GetParameter("Beat Division");
     var numBeats = GetParameter("Num Beats");
-    // var noteOrder = GetParameter("Note Order");
-    var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
-    var randomLength =
-      Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
     var randomDelay =
       Math.random() * ((GetParameter("Random Delay") / 100) * (1 / division));
 
@@ -102,7 +65,6 @@ function ProcessMIDI() {
 
     // calculate new positions if new beat
     if (newBeat) {
-      Trace("--------------------");
       manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
@@ -150,9 +112,7 @@ function ProcessMIDI() {
       // if position out of bounds, reset and break
       if (currentPosition >= delays.length - 1) {
         currentPosition = 0;
-        //beatPositions = getBeatPositions();
         newBeat = true;
-        //nextBeat = beatPositions[currentPosition];
         break;
       } else {
         currentPosition += 1;
@@ -161,13 +121,22 @@ function ProcessMIDI() {
     }
   }
 }
+//-----------------------------------------------------------------------------
+function Reset() {
+  activeNotes = [];
+  currentPosition = 0;
+  beatMap = [];
+  delays = [];
+  beatPositions = [];
+  newBeat = true;
+  manualActiveNotes = [];
+}
 
 //-----------------------------------------------------------------------------
 function getBeatPositions(nextBeat) {
   var musicInfo = GetTimingInfo();
   var positions = [];
   positions = delays.map((delay) => {
-    // left of cycle
     if (
       musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
       currentPosition === 0
@@ -179,12 +148,10 @@ function getBeatPositions(nextBeat) {
       return Math.floor(musicInfo.blockStartBeat) + delay;
     }
   });
-  Trace("GET POSITIONS: [" + positions + "]");
   return positions;
 }
 
 function sendNote(nextBeat, randomDelay) {
-  Trace("SEND");
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
   var division = GetParameter("Beat Division");
@@ -198,7 +165,6 @@ function sendNote(nextBeat, randomDelay) {
       simultaneousNotes > manualActiveNotes.length
         ? manualActiveNotes.length
         : simultaneousNotes;
-    Trace("iterations: " + iterations);
     for (var i = 0; i < iterations; i++) {
       var selectedNote = getAndRemoveRandomItem(availableNotes);
 
@@ -222,19 +188,6 @@ function sendNote(nextBeat, randomDelay) {
     }
   }
 }
-
-//-----------------------------------------------------------------------------
-// var noteOrders = ["up", "down", "random"];
-
-// function chooseNote(noteOrder, step) {
-//   var order = noteOrders[noteOrder];
-//   var length = activeNotes.length;
-//   if (order == "up") return activeNotes[step % length];
-//   if (order == "down")
-//     return activeNotes[Math.abs((step % length) - (length - 1))];
-//   if (order == "random") return activeNotes[Math.floor(Math.random() * length)];
-//   else return 0;
-// }
 
 //-----------------------------------------------------------------------------
 function getAndRemoveRandomItem(arr) {
@@ -316,16 +269,16 @@ var PluginParameters = [
     name: "Beat Division",
     type: "linear",
     minValue: 1,
-    maxValue: 16,
-    numberOfSteps: 15,
+    maxValue: 64,
+    numberOfSteps: 63,
     defaultValue: 4,
   },
   {
     name: "Num Beats",
     type: "linear",
     minValue: 1,
-    maxValue: 16,
-    numberOfSteps: 15,
+    maxValue: 64,
+    numberOfSteps: 63,
     defaultValue: 4,
   },
 
