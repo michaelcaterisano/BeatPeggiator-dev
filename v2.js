@@ -93,8 +93,9 @@ function ProcessMIDI() {
 
     // calculate new positions if currentPosition is 0
 
-    if (newBeat) {
+    if (newBeat || lookAheadEnd >= musicInfo.rightCycleBeat) {
       manualActiveNotes = [...activeNotes];
+      Trace("newBeat manual: " + manualActiveNotes);
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
@@ -201,6 +202,7 @@ function sendNote(nextBeat) {
   Trace("from sendNote: " + nextBeat);
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
+  Trace("sendNote man: " + availableNotes);
   var division = GetParameter("Beat Division");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
   var randomLength =
