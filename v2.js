@@ -15,6 +15,17 @@ var beatPositions = [];
 var newBeat = true;
 var manualActiveNotes = [];
 
+var state = {
+  BEAT: null,
+  start: null,
+  end: null,
+  beatMap: null,
+  //delays: delays.map(delay => delay.toFixed(2)),
+  pos: null,
+  curPos: null,
+  noteInSlice: null,
+};
+
 function Reset() {
   activeNotes = [];
   currentPosition = 0;
@@ -104,28 +115,15 @@ function ProcessMIDI() {
     // calculate new positions if currentPosition is 0
 
     if (newBeat || lookAheadEnd >= musicInfo.rightCycleBeat) {
+      Trace("NEW BEAT");
       manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
-      Trace("BEAT: [" + beatPositions.map((pos) => pos.toFixed(2)) + "]");
       newBeat = false;
     }
 
     var nextBeat = beatPositions[currentPosition];
-
-    // create state object
-    var state = {
-      BEAT: nextBeat,
-      start: musicInfo.blockStartBeat.toFixed(4),
-      end: musicInfo.blockEndBeat.toFixed(4),
-      beatMap: beatMap,
-      //delays: delays.map(delay => delay.toFixed(2)),
-      pos: beatPositions,
-      curPos: currentPosition,
-      noteInSlice:
-        nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
-    };
 
     // if (nextBeat < musicInfo.blockStartBeat) {
     //   Trace("MISSED NOTE: " + JSON.stringify(state));
@@ -148,9 +146,21 @@ function ProcessMIDI() {
       // including beats that wrap around the cycle point
       (musicInfo.cycling && nextBeat < cycleEnd)
     ) {
+      state = {
+        BEAT: nextBeat,
+        start: musicInfo.blockStartBeat.toFixed(4),
+        end: musicInfo.blockEndBeat.toFixed(4),
+        beatMap: beatMap,
+        //delays: delays.map(delay => delay.toFixed(2)),
+        pos: beatPositions,
+        curPos: currentPosition,
+        noteInSlice:
+          nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
+      };
+
+      Trace("WHILE: " + JSON.stringify(state));
       // adjust for cycle
       if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
-        Trace("CYCLE **********************************************");
         nextBeat -= cycleBeats;
         beatPositions = delays.map((delay) => {
           return musicInfo.leftCycleBeat + delay;
@@ -167,44 +177,64 @@ function ProcessMIDI() {
       // noteOn.sendAtBeat(nextBeat + randomDelay);
       // var noteOff = new NoteOff(noteOn);
       // noteOff.sendAtBeat(nextBeat + randomDelay + noteLength + randomLength);
-      Trace("SEND: " + nextBeat);
       sendNote(nextBeat, randomDelay);
+      if (numBeats === 1) {
+        newBeat = true;
+        break;
+      }
 
       // advance to next beat
       nextBeat += 0.001;
 
-      if (delays.length === 1) {
-        beatPositions = delays.map((delay) => {
-          return Math.ceil(musicInfo.blockStartBeat) + delay;
-        });
-        Trace("beatPosisitions: " + beatPositions);
-        newBeat = true;
-        return;
-      }
-      // increment curPtr
-      if (numBeats !== 1) {
-        currentPosition += 1;
-      }
-
-      if (currentPosition >= delays.length && numBeats !== 1) {
-        Trace("CUR.POS > DELAYS.LENGTH");
+      // if (delays.length === 1) {
+      //   beatPositions = delays.map((delay) => {
+      //     return Math.ceil(musicInfo.blockStartBeat) + delay;
+      //   });
+      //   newBeat = true; // ????
+      //   return;
+      // }
+      // // increment curPtr
+      if (currentPosition >= delays.length - 1) {
         currentPosition = 0;
-        beatPositions = delays.map((delay) => {
-          return Math.ceil(musicInfo.blockStartBeat) + delay;
-        });
-        Trace("beatPosisitions: " + beatPositions);
+        beatPositions = getBeatPositions(nextBeat);
         newBeat = true;
+        nextBeat = beatPositions[currentPosition];
+        Trace("out of bounds" + beatPositions);
+        break;
+      } else {
+        currentPosition += 1;
+        nextBeat = beatPositions[currentPosition];
       }
 
-      nextBeat = beatPositions[currentPosition];
-      Trace("NEXT: " + nextBeat);
-      Trace("------------------");
+      // if (currentPosition >= delays.length && numBeats !== 1) {
+      //   currentPosition = 0;
+      //   beatPositions = delays.map((delay) => {
+      //     return Math.ceil(musicInfo.blockStartBeat) + delay;
+      //   });
+      //   newBeat = true;
+      // }
+
+      // nextBeat = beatPositions[currentPosition];
+
+      state = {
+        BEAT: nextBeat,
+        start: musicInfo.blockStartBeat.toFixed(4),
+        end: musicInfo.blockEndBeat.toFixed(4),
+        beatMap: beatMap,
+        //delays: delays.map(delay => delay.toFixed(2)),
+        pos: beatPositions,
+        curPos: currentPosition,
+        noteInSlice:
+          nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd,
+      };
+
+      Trace("END: " + JSON.stringify(state));
     }
   }
 }
 
 //-----------------------------------------------------------------------------
-function getBeatPositions() {
+function getBeatPositions(nextBeat) {
   var musicInfo = GetTimingInfo();
   var positions = [];
   positions = delays.map((delay) => {
@@ -244,6 +274,7 @@ function sendNote(nextBeat, randomDelay) {
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
       noteToSend.sendAtBeat(nextBeat + randomDelay);
+      Trace(noteToSend);
 
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(
@@ -315,6 +346,31 @@ function generateNoteDelays(beatMap, offsetAmount) {
   }
 
   return output;
+}
+//-----------------------------------------------------------------------------
+function ParameterChanged(param, value) {
+  var musicInfo = GetTimingInfo();
+  if (param === 0) {
+    // Beat Division
+    if (value < GetParameter("Num Beats")) {
+      SetParameter(1, value);
+    } else {
+    }
+  }
+  if (param === 1) {
+    if (value === 1) {
+      beatPositions = delays.map((delay) => {
+        return Math.ceil(musicInfo.blockStartBeat) + delay;
+      });
+      currentPosition = 0;
+      nextBeat = beatPositions[currentPosition];
+    }
+    if (value > GetParameter("Beat Division")) {
+      SetParameter("Beat Division", value);
+    }
+  }
+  if (param === 2) {
+  }
 }
 //-----------------------------------------------------------------------------
 var PluginParameters = [
