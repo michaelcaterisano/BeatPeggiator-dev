@@ -88,14 +88,14 @@ function ProcessMIDI() {
     // get parameters
     var division = GetParameter("Beat Division");
     var numBeats = GetParameter("Num Beats");
-    var noteOrder = GetParameter("Note Order");
+    // var noteOrder = GetParameter("Note Order");
     var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
     var randomLength =
       Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
     var randomDelay =
       Math.random() * ((GetParameter("Random Delay") / 100) * (1 / division));
-    var randomOctave =
-      Math.floor(Math.random() * GetParameter("Random Octave")) * 12;
+    // var randomOctave =
+    //   Math.floor(Math.random() * GetParameter("Random Octave")) * 12;
 
     // calculate beat to schedule
     var lookAheadEnd = musicInfo.blockEndBeat;
@@ -169,7 +169,7 @@ function ProcessMIDI() {
       // var noteOff = new NoteOff(noteOn);
       // noteOff.sendAtBeat(nextBeat + randomDelay + noteLength + randomLength);
 
-      sendNote(nextBeat);
+      sendNote(nextBeat, randomDelay);
 
       // advance to next beat
       nextBeat += 0.001;
@@ -208,7 +208,7 @@ function getBeatPositions() {
   return positions;
 }
 
-function sendNote(nextBeat) {
+function sendNote(nextBeat, randomDelay) {
   Trace("from sendNote: " + nextBeat);
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
@@ -229,7 +229,7 @@ function sendNote(nextBeat) {
 
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
-      noteToSend.sendAtBeat(nextBeat);
+      noteToSend.sendAtBeat(nextBeat + randomDelay);
 
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(
@@ -330,15 +330,15 @@ var PluginParameters = [
     defaultValue: 1,
   },
 
-  {
-    name: "Note Order",
-    type: "menu",
-    valueStrings: noteOrders,
-    minValue: 0,
-    maxValue: 2,
-    numberOfSteps: 3,
-    defaultValue: 0,
-  },
+  // {
+  //   name: "Note Order",
+  //   type: "menu",
+  //   valueStrings: noteOrders,
+  //   minValue: 0,
+  //   maxValue: 2,
+  //   numberOfSteps: 3,
+  //   defaultValue: 0,
+  // },
 
   {
     name: "Note Length",
@@ -370,12 +370,12 @@ var PluginParameters = [
     defaultValue: 0,
   },
 
-  {
-    name: "Random Octave",
-    type: "linear",
-    minValue: 1,
-    maxValue: 4,
-    defaultValue: 1,
-    numberOfSteps: 3,
-  },
+  // {
+  //   name: "Random Octave",
+  //   type: "linear",
+  //   minValue: 1,
+  //   maxValue: 4,
+  //   defaultValue: 1,
+  //   numberOfSteps: 3,
+  // },
 ];
