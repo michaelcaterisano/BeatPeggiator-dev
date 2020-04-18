@@ -51,8 +51,12 @@ function HandleMIDI(event) {
       }
     }
   }
+
+  if (activeNotes.length === 0) {
+    Reset();
+  }
   // pass non-note events through
-  else event.send();
+  //else event.send();
 
   // sort array of active notes
   activeNotes.sort(sortByPitchAscending);
@@ -180,6 +184,7 @@ function getBeatPositions(nextBeat) {
 }
 
 function sendNote(nextBeat, randomDelay) {
+  Trace("SEND");
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
   var division = GetParameter("Beat Division");
@@ -193,6 +198,7 @@ function sendNote(nextBeat, randomDelay) {
       simultaneousNotes > manualActiveNotes.length
         ? manualActiveNotes.length
         : simultaneousNotes;
+    Trace("iterations: " + iterations);
     for (var i = 0; i < iterations; i++) {
       var selectedNote = getAndRemoveRandomItem(availableNotes);
 
