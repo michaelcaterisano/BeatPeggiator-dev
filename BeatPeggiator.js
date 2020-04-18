@@ -68,7 +68,7 @@ function ProcessMIDI() {
       manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
-      beatPositions = getBeatPositions();
+      beatPositions = getBeatPositions(delays);
       newBeat = false;
     }
 
@@ -77,9 +77,7 @@ function ProcessMIDI() {
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
       if (lookAheadEnd >= musicInfo.rightCycleBeat) {
-        beatPositions = delays.map((delay) => {
-          return musicInfo.leftCycleBeat + delay;
-        });
+        beatPositions = getLeftCyclePositions(delays);
         var cycleBeats = musicInfo.rightCycleBeat - musicInfo.leftCycleBeat;
         var cycleEnd = lookAheadEnd - cycleBeats;
       }
@@ -95,9 +93,7 @@ function ProcessMIDI() {
       if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
         nextBeat -= cycleBeats;
         // wrap beatPositions around cycle
-        beatPositions = delays.map((delay) => {
-          return musicInfo.leftCycleBeat + delay;
-        });
+        beatPositions = getLeftCyclePositions(delays);
       }
 
       sendNote(nextBeat, randomDelay);
@@ -150,7 +146,22 @@ function getBeatPositions(nextBeat) {
   });
   return positions;
 }
+//-----------------------------------------------------------------------------
+function getLeftCyclePositions(delays) {
+  var musicInfo = GetTimingInfo();
+  return delays.map((delay) => musicInfo.leftCycleBeat + delay);
+}
+//-----------------------------------------------------------------------------
+function getRegularPositions(delays) {
+  var musicInfo = GetTimingInfo();
+  return delays.map((delay) => Math.floor(musicInfo.blockStartBeat) + delay);
+}
 
+function getCeilingPositions(delays) {
+  var musicInfo = GetTimingInfo();
+  return delays.map((delay) => Math.ceil(musicInfo.blockStartBeat) + delay);
+}
+//-----------------------------------------------------------------------------
 function sendNote(nextBeat, randomDelay) {
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
@@ -250,9 +261,7 @@ function ParameterChanged(param, value) {
   }
   if (param === 1) {
     if (value === 1) {
-      beatPositions = delays.map((delay) => {
-        return Math.ceil(musicInfo.blockStartBeat) + delay;
-      });
+      beatPositions = getCeilingPositions(delays);
       currentPosition = 0;
       nextBeat = beatPositions[currentPosition];
     }
@@ -290,7 +299,6 @@ var PluginParameters = [
     numberOfSteps: 15,
     defaultValue: 1,
   },
-
   {
     name: "Note Length",
     unit: "%",
