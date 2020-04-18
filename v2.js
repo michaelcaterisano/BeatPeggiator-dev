@@ -86,7 +86,7 @@ function ProcessMIDI() {
 
   wasPlaying = musicInfo.playing;
 
-  if (activeNotes.length != 0 && musicInfo.playing) {
+  if (activeNotes.length != 0) {
     // get parameters
     var division = GetParameter("Beat Division");
     var numBeats = GetParameter("Num Beats");
