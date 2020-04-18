@@ -15,6 +15,16 @@ var beatPositions = [];
 var newBeat = true;
 var manualActiveNotes = [];
 
+function Reset() {
+  activeNotes = [];
+  currentPosition = 0;
+  beatMap = [];
+  delays = [];
+  beatPositions = [];
+  newBeat = true;
+  manualActiveNotes = [];
+}
+
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
 
