@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// CutletDrumEggiator
+// BeatPeggiator
 //--------------------------------------------------------------------------------------------------
 
 /* notes are generated in ProcessMIDI, and HandleMIDI only updates the note array (which is 
@@ -63,7 +63,7 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 64,
     numberOfSteps: 63,
-    defaultValue: 4
+    defaultValue: 4,
   },
   {
     name: "Notes Per Beat",
@@ -71,7 +71,7 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 64,
     numberOfSteps: 63,
-    defaultValue: 4
+    defaultValue: 4,
   },
   {
     name: "Simultaneous Notes",
@@ -79,7 +79,7 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 16,
     numberOfSteps: 15,
-    defaultValue: 1
+    defaultValue: 1,
   },
   {
     name: "Note Length",
@@ -88,7 +88,7 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 200,
     defaultValue: 100.0,
-    numberOfSteps: 199
+    numberOfSteps: 199,
   },
 
   {
@@ -98,8 +98,8 @@ var PluginParameters = [
     minValue: 0,
     maxValue: 200,
     numberOfSteps: 200,
-    defaultValue: 0
-  }
+    defaultValue: 0,
+  },
 ];
 
 // LOGIC SCRIPTER FUNCTIONS
@@ -508,10 +508,10 @@ function printSamples() {
   if (isPlaying()) {
     Trace(
       "curr:  [" +
-        currentTempoSample.map(el => el.toFixed(2)) +
+        currentTempoSample.map((el) => el.toFixed(2)) +
         "]" +
         " prev: [" +
-        prevTempoSample.map(el => el.toFixed(2)) +
+        prevTempoSample.map((el) => el.toFixed(2)) +
         "]"
     );
   }
