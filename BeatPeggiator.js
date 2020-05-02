@@ -34,6 +34,15 @@ function HandleMIDI(event) {
   if (activeNotes.length === 0) {
     Reset();
   }
+
+  activeNotes.sort(sortByPitchAscending);
+}
+
+//-----------------------------------------------------------------------------
+function sortByPitchAscending(a, b) {
+  if (a.pitch < b.pitch) return -1;
+  if (a.pitch > b.pitch) return 1;
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -155,6 +164,7 @@ function sendNote(nextBeat, randomDelay) {
   var info = GetTimingInfo();
   var availableNotes = [...manualActiveNotes];
   var division = GetParameter("Beat Division");
+  var noteOrder = GetParameter("Note Order");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
   var randomLength =
     Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
@@ -166,7 +176,9 @@ function sendNote(nextBeat, randomDelay) {
         ? manualActiveNotes.length
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
-      var selectedNote = getAndRemoveRandomItem(availableNotes);
+      //var selectedNote = getAndRemoveRandomItem(availableNotes);
+      var step = Math.floor(nextBeat / (1 / division) - division);
+      var selectedNote = chooseNote(availableNotes, noteOrder, step);
 
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
@@ -190,11 +202,32 @@ function sendNote(nextBeat, randomDelay) {
 }
 
 //-----------------------------------------------------------------------------
-function getAndRemoveRandomItem(arr) {
+function getAndRemoveRandomItem(arr, noteOrder, currentPosition) {
   if (arr.length !== 0) {
     var index = Math.floor(Math.random() * arr.length);
     return arr.splice(index, 1)[0];
+  }
+}
+
+//-----------------------------------------------------------------------------
+var noteOrders = ["up", "down", "random"];
+
+function chooseNote(arr, noteOrder, step) {
+  var order = noteOrders[noteOrder];
+  var length = arr.length;
+  if (order == "up") {
+    var index = step % length;
+    return arr.splice(index, 1)[0];
+  }
+  if (order == "down") {
+    var index = Math.abs((step % length) - (length - 1));
+    return arr.splice(index, 1)[0];
+  }
+  if (order == "random") {
+    var index = Math.floor(Math.random() * length);
+    return arr.splice(index, 1)[0];
   } else {
+    return 0;
   }
 }
 //-----------------------------------------------------------------------------
@@ -260,13 +293,21 @@ function ParameterChanged(param, value) {
       SetParameter("Beat Division", value);
     }
   }
-  if (param === 2) {
-  }
+  // if (param === 2) {
+  // }
 }
 //-----------------------------------------------------------------------------
 var PluginParameters = [
   {
     name: "Beat Division",
+    type: "linear",
+    minValue: 1,
+    maxValue: 64,
+    numberOfSteps: 63,
+    defaultValue: 4,
+  },
+  {
+    name: "Num Beats",
     type: "linear",
     minValue: 1,
     maxValue: 64,
@@ -281,13 +322,15 @@ var PluginParameters = [
     numberOfSteps: 90,
     defaultValue: 1,
   },
+
   {
-    name: "Num Beats",
-    type: "linear",
-    minValue: 1,
-    maxValue: 64,
-    numberOfSteps: 63,
-    defaultValue: 4,
+    name: "Note Order",
+    type: "menu",
+    valueStrings: noteOrders,
+    minValue: 0,
+    maxValue: 2,
+    numberOfSteps: 3,
+    defaultValue: 0,
   },
 
   {
