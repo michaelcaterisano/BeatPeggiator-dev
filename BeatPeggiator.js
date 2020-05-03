@@ -14,6 +14,7 @@ var delays = [];
 var beatPositions = [];
 var newBeat = true;
 var manualActiveNotes = [];
+var firstTime = true;
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -57,6 +58,7 @@ function ProcessMIDI() {
     for (i = 0; i < activeNotes.length; i++) {
       var off = new NoteOff(activeNotes[i]);
       off.send();
+      firstTime = true;
     }
   }
 
@@ -74,6 +76,8 @@ function ProcessMIDI() {
 
     // calculate new positions if new beat
     if (newBeat) {
+      Trace("NEW BEAT/////////////////////");
+      prevBeatPositions = beatPositions;
       manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
@@ -119,7 +123,8 @@ function ProcessMIDI() {
       nextBeat += 0.001;
 
       // if position out of bounds, reset and break
-      if (currentPosition >= delays.length - 1) {
+      if (currentPosition >= beatPositions.length - 1) {
+        firstTime = false;
         currentPosition = 0;
         newBeat = true;
         break;
@@ -139,13 +144,19 @@ function Reset() {
   beatPositions = [];
   newBeat = true;
   manualActiveNotes = [];
+  firstTime = true;
 }
 
 //-----------------------------------------------------------------------------
 function getBeatPositions(nextBeat) {
   var musicInfo = GetTimingInfo();
   var positions = [];
+  var division = GetParameter("Beat Division");
+  var denominator = GetParameter("Denominator");
   positions = delays.map((delay) => {
+    if (division < denominator && !firstTime) {
+      return Math.ceil(musicInfo.blockStartBeat + 1) + delay;
+    }
     if (
       musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
       currentPosition === 0
@@ -265,10 +276,10 @@ function generateNoteDelays(beatMap, offsetAmount) {
 
   for (var i = 0; i < beatMap.length; i++) {
     if (beatMap[i] === 1) {
+      Trace(offsetAmount * (i * GetParameter("Denominator")));
       output.push(offsetAmount * (i * GetParameter("Denominator")));
     }
   }
-
   return output;
 }
 //-----------------------------------------------------------------------------
@@ -319,7 +330,7 @@ var PluginParameters = [
     type: "linear",
     minValue: 1,
     maxValue: 10,
-    numberOfSteps: 90,
+    numberOfSteps: 9,
     defaultValue: 1,
   },
 
