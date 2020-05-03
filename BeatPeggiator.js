@@ -153,9 +153,16 @@ function getBeatPositions(nextBeat) {
   var positions = [];
   var division = GetParameter("Beat Division");
   var denominator = GetParameter("Denominator");
+  Trace(beatPositions);
   positions = delays.map((delay) => {
     if (division < denominator && !firstTime) {
-      return Math.ceil(musicInfo.blockStartBeat + 1) + delay;
+      return (
+        Math.ceil(musicInfo.blockStartBeat) +
+        (denominator -
+          (Math.ceil(beatPositions[beatPositions.length - 1]) -
+            beatPositions[0])) +
+        delay
+      );
     }
     if (
       musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
@@ -276,7 +283,6 @@ function generateNoteDelays(beatMap, offsetAmount) {
 
   for (var i = 0; i < beatMap.length; i++) {
     if (beatMap[i] === 1) {
-      Trace(offsetAmount * (i * GetParameter("Denominator")));
       output.push(offsetAmount * (i * GetParameter("Denominator")));
     }
   }
