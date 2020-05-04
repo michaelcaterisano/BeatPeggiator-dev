@@ -13,7 +13,7 @@ var beatMap = [];
 var delays = [];
 var beatPositions = [];
 var newBeat = true;
-var manualActiveNotes = [];
+//var manualActiveNotes = [];
 var firstTime = true;
 
 function HandleMIDI(event) {
@@ -78,7 +78,7 @@ function ProcessMIDI() {
     if (newBeat) {
       Trace("NEW BEAT/////////////////////");
       prevBeatPositions = beatPositions;
-      manualActiveNotes = [...activeNotes];
+      //manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
@@ -143,7 +143,7 @@ function Reset() {
   delays = [];
   beatPositions = [];
   newBeat = true;
-  manualActiveNotes = [];
+  //manualActiveNotes = [];
   firstTime = true;
 }
 
@@ -180,7 +180,7 @@ function getBeatPositions(nextBeat) {
 
 function sendNote(nextBeat, randomDelay) {
   var info = GetTimingInfo();
-  var availableNotes = [...manualActiveNotes];
+  var availableNotes = [...activeNotes];
   var division = GetParameter("Beat Division");
   var noteOrder = GetParameter("Note Order");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
@@ -190,8 +190,8 @@ function sendNote(nextBeat, randomDelay) {
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
     var iterations =
-      simultaneousNotes > manualActiveNotes.length
-        ? manualActiveNotes.length
+      simultaneousNotes > activeNotes.length
+        ? activeNotes.length
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
       //var selectedNote = getAndRemoveRandomItem(availableNotes);
