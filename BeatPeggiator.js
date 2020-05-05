@@ -157,11 +157,7 @@ function getBeatPositions(nextBeat) {
   positions = delays.map((delay) => {
     if (division < denominator && !firstTime) {
       return (
-        Math.ceil(musicInfo.blockStartBeat) +
-        (denominator -
-          (Math.ceil(beatPositions[beatPositions.length - 1]) -
-            beatPositions[0])) +
-        delay
+        Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
       );
     }
     if (
@@ -337,6 +333,14 @@ var PluginParameters = [
     minValue: 1,
     maxValue: 10,
     numberOfSteps: 9,
+    defaultValue: 1,
+  },
+  {
+    name: "Hack",
+    type: "linear",
+    minValue: 1,
+    maxValue: 10,
+    numberOfSteps: 9 ,
     defaultValue: 1,
   },
 
