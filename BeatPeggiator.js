@@ -156,9 +156,7 @@ function getBeatPositions(nextBeat) {
   Trace(beatPositions);
   positions = delays.map((delay) => {
     if (division < denominator && !firstTime) {
-      return (
-        Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
-      );
+      return Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
     }
     if (
       musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
@@ -340,7 +338,7 @@ var PluginParameters = [
     type: "linear",
     minValue: 1,
     maxValue: 10,
-    numberOfSteps: 9 ,
+    numberOfSteps: 9,
     defaultValue: 1,
   },
 
