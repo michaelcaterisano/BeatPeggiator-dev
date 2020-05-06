@@ -16,6 +16,7 @@ var newBeat = true;
 var prevBeat = null;
 var currentBeat = null;
 var firstTime = true;
+var prevDenominator = null;
 //var manualActiveNotes = [];
 
 function HandleMIDI(event) {
@@ -35,7 +36,6 @@ function HandleMIDI(event) {
   }
 
   if (activeNotes.length === 0) {
-    Trace("ACTIVE NOTES IS ZERO/////////");
     Reset();
   }
 
@@ -90,10 +90,13 @@ function ProcessMIDI() {
       beatPositions = getBeatPositions();
       newBeat = false;
       firstTime = false;
+      prevDenominator = GetParameter("Denominator");
 
       var newBeatState = {
+        firstTime: firstTime,
+        denom: GetParameter("Denominator"),
         beatMap: beatMap,
-        delays: delays,
+        //delays: delays,
         beatPositions: beatPositions,
       };
 
@@ -151,7 +154,7 @@ function ProcessMIDI() {
 }
 //-----------------------------------------------------------------------------
 function Reset() {
-  Trace("RESET///////////");
+  //Trace("RESET///////////");
   activeNotes = [];
   currentPosition = 0;
   beatMap = [];
@@ -169,17 +172,17 @@ function getBeatPositions(nextBeat) {
   var musicInfo = GetTimingInfo();
   var positions = [];
   var division = GetParameter("Beat Division");
-  var denominator = GetParameter("Denominator");
+  var denominator = getDenominator();
   var firstBeat = true;
   positions = delays.map((delay) => {
     if (firstTime) {
       prevBeat = setPrevBeat();
       Trace("step 1 prevBeat: " + prevBeat);
-      Trace("called on: " + musicInfo.blockStartBeat);
+      //Trace("called on: " + musicInfo.blockStartBeat);
       return prevBeat + delay;
     } else if (!firstTime) {
       if (firstBeat) {
-        Trace("step 2");
+        Trace("step 2 " + prevBeat);
         prevBeat = prevBeat + denominator;
         currentBeat = prevBeat;
         firstBeat = false;
@@ -193,6 +196,15 @@ function getBeatPositions(nextBeat) {
   });
   return positions;
 }
+//-----------------------------------------------------------------------------
+function getDenominator() {
+  var currentDenominator = GetParameter("Denominator");
+  if (currentDenominator !== prevDenominator) {
+    return prevDenominator;
+  } else {
+    return currentDenominator;
+  }
+}
 
 //-----------------------------------------------------------------------------
 function setPrevBeat() {
@@ -202,10 +214,10 @@ function setPrevBeat() {
     musicInfo.cycling &&
     Math.round(musicInfo.blockStartBeat) === musicInfo.rightCycleBeat
   ) {
-    Trace("setPrevBeat END CYCLE/////");
+    //Trace("setPrevBeat END CYCLE/////");
     return musicInfo.leftCycleBeat;
   } else {
-    Trace("setPrevBeat NORMAL/////");
+    //Trace("setPrevBeat NORMAL/////");
     return Math.round(musicInfo.blockStartBeat);
   }
 }
@@ -325,6 +337,7 @@ function ParameterChanged(param, value) {
     }
   }
   if (param === 1) {
+    // Num Beats
     if (value === 1) {
       beatPositions = delays.map((delay) => {
         return Math.ceil(musicInfo.blockStartBeat) + delay;
@@ -336,7 +349,9 @@ function ParameterChanged(param, value) {
       SetParameter("Beat Division", value);
     }
   }
+
   // if (param === 2) {
+  //   // Denominator
   // }
 }
 //-----------------------------------------------------------------------------
