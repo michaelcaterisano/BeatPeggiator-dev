@@ -157,6 +157,8 @@ function ProcessMIDI() {
 function Reset() {
   //Trace("RESET///////////");
   activeNotes = [];
+  availableNotes = [];
+
   currentPosition = 0;
   beatMap = [];
   delays = [];
