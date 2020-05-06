@@ -17,6 +17,7 @@ var prevBeat = null;
 var currentBeat = null;
 var firstTime = true;
 var prevDenominator = null;
+var availableNotes = [];
 //var manualActiveNotes = [];
 
 function HandleMIDI(event) {
@@ -226,12 +227,18 @@ function setPrevBeat() {
 
 function sendNote(nextBeat, randomDelay) {
   var info = GetTimingInfo();
-  var availableNotes = [...activeNotes];
   var division = GetParameter("Beat Division");
   var noteOrder = GetParameter("Note Order");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
   var randomLength =
     Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
+  var sentNotes = [];
+
+  if (availableNotes.length === 0) {
+    availableNotes = [...activeNotes];
+  }
+
+  Trace("AVAILABLE: " + availableNotes.map((note) => note.pitch));
 
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
@@ -242,10 +249,11 @@ function sendNote(nextBeat, randomDelay) {
     for (var i = 0; i < iterations; i++) {
       //var selectedNote = getAndRemoveRandomItem(availableNotes);
       var step = Math.floor(nextBeat / (1 / division) - division);
-      var selectedNote = chooseNote(availableNotes, noteOrder, step);
+      var selectedNote = chooseNote(noteOrder, step);
 
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
+      sentNotes.push(noteToSend.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
       Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
 
@@ -255,6 +263,8 @@ function sendNote(nextBeat, randomDelay) {
       );
     }
   }
+
+  Trace("NOTES SENT: " + sentNotes + "**********");
 }
 
 //-----------------------------------------------------------------------------
@@ -268,20 +278,23 @@ function getAndRemoveRandomItem(arr, noteOrder, currentPosition) {
 //-----------------------------------------------------------------------------
 var noteOrders = ["up", "down", "random"];
 
-function chooseNote(arr, noteOrder, step) {
+function chooseNote(noteOrder, step) {
+  if (availableNotes.length === 0) {
+    availableNotes = [...activeNotes];
+  }
   var order = noteOrders[noteOrder];
-  var length = arr.length;
+  var length = availableNotes.length;
   if (order == "up") {
     var index = step % length;
-    return arr.splice(index, 1)[0];
+    return availableNotes.splice(0, 1)[0];
   }
   if (order == "down") {
     var index = Math.abs((step % length) - (length - 1));
-    return arr.splice(index, 1)[0];
+    return availableNotes.splice(availableNotes.length - 1, 1)[0];
   }
   if (order == "random") {
     var index = Math.floor(Math.random() * length);
-    return arr.splice(index, 1)[0];
+    return availableNotes.splice(index, 1)[0];
   } else {
     return 0;
   }
