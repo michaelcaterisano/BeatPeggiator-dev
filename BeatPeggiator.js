@@ -172,9 +172,6 @@ function getBeatPositions(nextBeat) {
   var denominator = GetParameter("Denominator");
   var firstBeat = true;
   positions = delays.map((delay) => {
-    // if (division < denominator && !firstTime) {
-    //   return Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
-    // }
     if (firstTime) {
       prevBeat = setPrevBeat();
       Trace("step 1 prevBeat: " + prevBeat);
@@ -362,14 +359,6 @@ var PluginParameters = [
   },
   {
     name: "Denominator",
-    type: "linear",
-    minValue: 1,
-    maxValue: 10,
-    numberOfSteps: 9,
-    defaultValue: 1,
-  },
-  {
-    name: "Hack",
     type: "linear",
     minValue: 1,
     maxValue: 10,
