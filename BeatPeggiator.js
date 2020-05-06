@@ -13,8 +13,10 @@ var beatMap = [];
 var delays = [];
 var beatPositions = [];
 var newBeat = true;
-//var manualActiveNotes = [];
+var prevBeat = null;
+var currentBeat = null;
 var firstTime = true;
+//var manualActiveNotes = [];
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -33,6 +35,7 @@ function HandleMIDI(event) {
   }
 
   if (activeNotes.length === 0) {
+    Trace("ACTIVE NOTES IS ZERO/////////");
     Reset();
   }
 
@@ -53,12 +56,15 @@ function ProcessMIDI() {
   // Get timing information from the host application
   var musicInfo = GetTimingInfo();
 
+  if (activeNotes.length === 0) {
+    prevBeat = null;
+  }
+
   // clear activeNotes[] when the transport stops and send any remaining note off events
   if (wasPlaying && !musicInfo.playing) {
     for (i = 0; i < activeNotes.length; i++) {
       var off = new NoteOff(activeNotes[i]);
       off.send();
-      firstTime = true;
     }
   }
 
@@ -77,12 +83,21 @@ function ProcessMIDI() {
     // calculate new positions if new beat
     if (newBeat) {
       Trace("NEW BEAT/////////////////////");
-      prevBeatPositions = beatPositions;
+      //prevBeatPositions = beatPositions;
       //manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
       newBeat = false;
+      firstTime = false;
+
+      var newBeatState = {
+        beatMap: beatMap,
+        delays: delays,
+        beatPositions: beatPositions,
+      };
+
+      Trace(JSON.stringify(newBeatState));
     }
 
     var nextBeat = beatPositions[currentPosition];
@@ -124,7 +139,6 @@ function ProcessMIDI() {
 
       // if position out of bounds, reset and break
       if (currentPosition >= beatPositions.length - 1) {
-        firstTime = false;
         currentPosition = 0;
         newBeat = true;
         break;
@@ -137,14 +151,17 @@ function ProcessMIDI() {
 }
 //-----------------------------------------------------------------------------
 function Reset() {
+  Trace("RESET///////////");
   activeNotes = [];
   currentPosition = 0;
   beatMap = [];
   delays = [];
   beatPositions = [];
   newBeat = true;
-  //manualActiveNotes = [];
   firstTime = true;
+  prevBeat = null;
+
+  //manualActiveNotes = [];
 }
 
 //-----------------------------------------------------------------------------
@@ -153,24 +170,50 @@ function getBeatPositions(nextBeat) {
   var positions = [];
   var division = GetParameter("Beat Division");
   var denominator = GetParameter("Denominator");
-  Trace(beatPositions);
+  var firstBeat = true;
   positions = delays.map((delay) => {
-    if (division < denominator && !firstTime) {
-      return Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
+    // if (division < denominator && !firstTime) {
+    //   return Math.ceil(musicInfo.blockStartBeat + GetParameter("Hack")) + delay;
+    // }
+    if (firstTime) {
+      prevBeat = setPrevBeat();
+      Trace("step 1 prevBeat: " + prevBeat);
+      Trace("called on: " + musicInfo.blockStartBeat);
+      return prevBeat + delay;
+    } else if (!firstTime) {
+      if (firstBeat) {
+        Trace("step 2");
+        prevBeat = prevBeat + denominator;
+        currentBeat = prevBeat;
+        firstBeat = false;
+      }
+
+      return currentBeat + delay;
     }
-    if (
-      musicInfo.blockStartBeat < musicInfo.leftCycleBeat ||
-      currentPosition === 0
-    ) {
+    if (musicInfo.blockStartBeat < musicInfo.leftCycleBeat) {
       return Math.ceil(musicInfo.blockStartBeat) + delay;
-    } else if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
-      return musicInfo.leftCycleBeat + delay;
-    } else {
-      return Math.floor(musicInfo.blockStartBeat) + delay;
     }
   });
   return positions;
 }
+
+//-----------------------------------------------------------------------------
+function setPrevBeat() {
+  var musicInfo = GetTimingInfo();
+
+  if (
+    musicInfo.cycling &&
+    Math.round(musicInfo.blockStartBeat) === musicInfo.rightCycleBeat
+  ) {
+    Trace("setPrevBeat END CYCLE/////");
+    return musicInfo.leftCycleBeat;
+  } else {
+    Trace("setPrevBeat NORMAL/////");
+    return Math.round(musicInfo.blockStartBeat);
+  }
+}
+
+//-----------------------------------------------------------------------------
 
 function sendNote(nextBeat, randomDelay) {
   var info = GetTimingInfo();
@@ -195,15 +238,7 @@ function sendNote(nextBeat, randomDelay) {
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.pitch;
       noteToSend.sendAtBeat(nextBeat + randomDelay);
-      Trace(
-        "NOTE: " +
-          selectedNote.pitch +
-          " | BEAT: " +
-          nextBeat.toFixed(2) +
-          " | POSITIONS: [" +
-          beatPositions.map((pos) => pos.toFixed(2)) +
-          "]"
-      );
+      Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
 
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(
