@@ -94,10 +94,11 @@ function ProcessMIDI() {
       prevDenominator = GetParameter("Denominator");
 
       var newBeatState = {
-        firstTime: firstTime,
-        denom: GetParameter("Denominator"),
-        beatMap: beatMap,
+        //firstTime: firstTime,
+        //denom: GetParameter("Denominator"),
+        //beatMap: beatMap,
         //delays: delays,
+        now: musicInfo.blockStartBeat,
         beatPositions: beatPositions,
       };
 
@@ -180,12 +181,12 @@ function getBeatPositions(nextBeat) {
   positions = delays.map((delay) => {
     if (firstTime) {
       prevBeat = setPrevBeat();
-      Trace("step 1 prevBeat: " + prevBeat);
+      //Trace("step 1 prevBeat: " + prevBeat);
       //Trace("called on: " + musicInfo.blockStartBeat);
       return prevBeat + delay;
     } else if (!firstTime) {
       if (firstBeat) {
-        Trace("step 2 " + prevBeat);
+        //Trace("step 2 " + prevBeat);
         prevBeat = prevBeat + denominator;
         currentBeat = prevBeat;
         firstBeat = false;
@@ -221,7 +222,7 @@ function setPrevBeat() {
     return musicInfo.leftCycleBeat;
   } else {
     //Trace("setPrevBeat NORMAL/////");
-    return Math.round(musicInfo.blockStartBeat);
+    return Math.ceil(musicInfo.blockStartBeat);
   }
 }
 
@@ -240,7 +241,7 @@ function sendNote(nextBeat, randomDelay) {
     availableNotes = [...activeNotes];
   }
 
-  Trace("AVAILABLE: " + availableNotes.map((note) => note.pitch));
+  //Trace("AVAILABLE: " + availableNotes.map((note) => note.pitch));
 
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
@@ -257,7 +258,7 @@ function sendNote(nextBeat, randomDelay) {
       noteToSend.pitch = selectedNote.pitch;
       sentNotes.push(noteToSend.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
-      Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
+      //Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
 
       noteOffToSend = new NoteOff(noteToSend);
       noteOffToSend.sendAfterMilliseconds(
