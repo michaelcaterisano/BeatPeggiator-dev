@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// BeatPeggiator 2.0
+// BeatPeggiator dev: fixed noteOff send
 //-----------------------------------------------------------------------------
 /*	
 		Held notes are tracked in a global array in the HandleMIDI() callback.
