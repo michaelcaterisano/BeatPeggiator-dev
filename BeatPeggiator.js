@@ -261,13 +261,25 @@ function sendNote(nextBeat, randomDelay) {
       //Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
 
       noteOffToSend = new NoteOff(noteToSend);
-      noteOffToSend.sendAfterMilliseconds(
-        (noteLength + randomLength) * (60000 / info.tempo)
+      // noteOffToSend.sendAfterMilliseconds(
+      //   (noteLength + randomLength) * (60000 / info.tempo)
+      // );
+      noteOffToSend.sendAtBeat(
+        nextBeat + noteLength + randomLength + randomDelay
+      );
+
+      Trace(
+        "NOTE: " +
+          noteToSend.pitch +
+          " OFF: " +
+          noteLength +
+          " randomLength: " +
+          randomLength
       );
     }
   }
 
-  Trace("NOTES SENT: " + sentNotes + "**********");
+  //Trace("NOTES SENT: " + sentNotes + "**********");
 }
 
 //-----------------------------------------------------------------------------
