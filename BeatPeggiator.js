@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// BeatPeggiator dev: fixed noteOff send
+// BeatPeggiator dev: developing, not on commit
 //-----------------------------------------------------------------------------
 /*	
 		Held notes are tracked in a global array in the HandleMIDI() callback.
@@ -74,7 +74,7 @@ function ProcessMIDI() {
   if (activeNotes.length != 0) {
     // get parameters
     var division = GetParameter("Beat Division");
-    var numBeats = GetParameter("Num Beats");
+    var numBeats = GetParameter("Number Of Notes");
     var randomDelay =
       Math.random() * ((GetParameter("Random Delay") / 100) * (1 / division));
 
@@ -91,11 +91,11 @@ function ProcessMIDI() {
       beatPositions = getBeatPositions();
       newBeat = false;
       firstTime = false;
-      prevDenominator = GetParameter("Denominator");
+      prevDenominator = GetParameter("Beats");
 
       var newBeatState = {
         //firstTime: firstTime,
-        //denom: GetParameter("Denominator"),
+        //denom: GetParameter("Beats"),
         //beatMap: beatMap,
         //delays: delays,
         now: musicInfo.blockStartBeat,
@@ -126,6 +126,8 @@ function ProcessMIDI() {
     ) {
       // adjust for cycle
       if (musicInfo.cycling && nextBeat >= musicInfo.rightCycleBeat) {
+        Trace("RIGHT CYCLE-------------");
+
         nextBeat -= cycleBeats;
         // wrap beatPositions around cycle
         beatPositions = delays.map((delay) => {
@@ -202,7 +204,7 @@ function getBeatPositions(nextBeat) {
 }
 //-----------------------------------------------------------------------------
 function getDenominator() {
-  var currentDenominator = GetParameter("Denominator");
+  var currentDenominator = GetParameter("Beats");
   if (currentDenominator !== prevDenominator) {
     return prevDenominator;
   } else {
@@ -229,7 +231,7 @@ function setPrevBeat() {
 //-----------------------------------------------------------------------------
 
 function sendNote(nextBeat, randomDelay) {
-  var info = GetTimingInfo();
+  var musicInfo = GetTimingInfo();
   var division = GetParameter("Beat Division");
   var noteOrder = GetParameter("Note Order");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
@@ -264,17 +266,21 @@ function sendNote(nextBeat, randomDelay) {
       // noteOffToSend.sendAfterMilliseconds(
       //   (noteLength + randomLength) * (60000 / info.tempo)
       // );
-      noteOffToSend.sendAtBeat(
-        nextBeat + noteLength + randomLength + randomDelay
-      );
+
+      var noteOffBeat = nextBeat + noteLength + randomLength + randomDelay;
+      if (musicInfo.cycling && noteOffBeat >= musicInfo.rightCycleBeat) {
+        noteOffToSend.sendAtBeat(musicInfo.rightCycleBeat);
+      } else {
+        noteOffToSend.sendAtBeat(noteOffBeat);
+      }
 
       Trace(
         "NOTE: " +
           noteToSend.pitch +
+          " ON: " +
+          (nextBeat + randomDelay) +
           " OFF: " +
-          noteLength +
-          " randomLength: " +
-          randomLength
+          (nextBeat + noteLength + randomLength + randomDelay)
       );
     }
   }
@@ -349,7 +355,7 @@ function generateNoteDelays(beatMap, offsetAmount) {
 
   for (var i = 0; i < beatMap.length; i++) {
     if (beatMap[i] === 1) {
-      output.push(offsetAmount * (i * GetParameter("Denominator")));
+      output.push(offsetAmount * (i * GetParameter("Beats")));
     }
   }
   return output;
@@ -359,13 +365,13 @@ function ParameterChanged(param, value) {
   var musicInfo = GetTimingInfo();
   if (param === 0) {
     // Beat Division
-    if (value < GetParameter("Num Beats")) {
+    if (value < GetParameter("Number Of Notes")) {
       SetParameter(1, value);
     } else {
     }
   }
   if (param === 1) {
-    // Num Beats
+    // Number Of Notes
     if (value === 1) {
       beatPositions = delays.map((delay) => {
         return Math.ceil(musicInfo.blockStartBeat) + delay;
@@ -379,7 +385,7 @@ function ParameterChanged(param, value) {
   }
 
   // if (param === 2) {
-  //   // Denominator
+  //   // Beats
   // }
 }
 //-----------------------------------------------------------------------------
@@ -393,7 +399,7 @@ var PluginParameters = [
     defaultValue: 4,
   },
   {
-    name: "Num Beats",
+    name: "Number Of Notes",
     type: "linear",
     minValue: 1,
     maxValue: 64,
@@ -401,7 +407,7 @@ var PluginParameters = [
     defaultValue: 4,
   },
   {
-    name: "Denominator",
+    name: "Beats",
     type: "linear",
     minValue: 1,
     maxValue: 10,
