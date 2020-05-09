@@ -10,7 +10,7 @@ Open Logic Pro and create a new track. Add the Scripter plugin to the track. Ope
 
 BeatPeggiator creates rhythms using the MIDI notes that are currently playing in the piano roll. It does this using three main parameters:
 
-#### Parameters:
+#### Main Parameters:
 
 `Beats` represents the number of beats (or metronome clicks) over which BeatPeggiator will play rhythms.
 
@@ -18,7 +18,7 @@ BeatPeggiator creates rhythms using the MIDI notes that are currently playing in
 
 `Number of notes` represents the number of beat divisions that will be played over the `Beats`.
 
-BeatPeggiator's other settings are:
+#### Additional Parameters:
 
 `Note Order` which has three options: up, down, and random. This controls the order in which notes are played.
 
