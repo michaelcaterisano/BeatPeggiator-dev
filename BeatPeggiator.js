@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// BeatPeggiator dev: developing, not on commit
+// BeatPeggiator 2.0
 //-----------------------------------------------------------------------------
 /*	
 		Held notes are tracked in a global array in the HandleMIDI() callback.
