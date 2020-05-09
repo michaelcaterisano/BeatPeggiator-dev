@@ -8,13 +8,43 @@ Open Logic Pro and create a new track. Add the Scripter plugin to the track. Ope
 
 #### Description:
 
-BeatPeggiator randomly chooses one or more active MIDI note from the `Active Notes` (the number of which is controlled by the `Simultaneous notes` parameter), and then plays them at a randomized rhythm, which is controlled by two parameters: `Beat division` and `Number of notes`.
+BeatPeggiator creates rhythms using the MIDI notes that are currently playing in the piano roll. It does this using three main parameters:
 
-`Beat division` represents the number of possible notes in a beat. These notes will be equally spaced.
+#### Parameters:
 
-`Number of notes` represents the number of notes to be played during a given beat.
+`Beats` represents the number of beats (or metronome clicks) over which BeatPeggiator will play rhythms.
 
-#### Usage:
+`Beat division` represents the number of equal parts `Beats` will be divided into.
+
+`Number of notes` represents the number of beat divisions that will be played over the `Beats`.
+
+BeatPeggiator's other settings are:
+
+`Note Order` which has three options: up, down, and random. This controls the order in which notes are played.
+
+`Simultaneous Notes`, which controls how many notes are played at once.
+
+`Note Length` which controls the length of each note played.
+
+`Random Length` which introduces some randomness to the note lengths.
+
+`Random Delay` which causes notes to be delayed by a random amount.
+
+#### Settings Examples:
+
+`Beats` : 1
+`Beat Division` : 4
+`Number of notes` : 3
+
+Every beat, BeatPeggiator will play 3 notes in a 4 subdivision, or three 16th notes every beat.
+
+`Beats` : 5
+`Beat Division`: 3
+`Number of notes` : 3
+
+Every five beats, BeatPeggiator will play three equally spaced notes, or a 3 : 5 polyrhythm.
+
+#### Deeper dive:
 
 On a keyboard or in the piano roll, hold down some notes. Ex: C3 E3 G3.
 
@@ -23,6 +53,8 @@ On a keyboard or in the piano roll, hold down some notes. Ex: C3 E3 G3.
 `Beat division`: 4
 
 `Number of notes`: 2
+
+`Beats`: 1
 
 `Simultaneous notes`: 1
 
