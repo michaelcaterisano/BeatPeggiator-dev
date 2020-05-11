@@ -18,6 +18,7 @@ var currentBeat = null;
 var firstTime = true;
 var prevDenominator = null;
 var availableNotes = [];
+var sentNotes = [];
 //var manualActiveNotes = [];
 
 function HandleMIDI(event) {
@@ -237,7 +238,7 @@ function sendNote(nextBeat, randomDelay) {
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
   var randomLength =
     Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
-  var sentNotes = [];
+  sentNotes = [];
 
   if (availableNotes.length === 0) {
     availableNotes = [...activeNotes];
@@ -253,12 +254,19 @@ function sendNote(nextBeat, randomDelay) {
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
       //var selectedNote = getAndRemoveRandomItem(availableNotes);
-      var step = Math.floor(nextBeat / (1 / division) - division);
-      var selectedNote = chooseNote(noteOrder, step);
+      //var step = Math.floor(nextBeat / (1 / division) - division);
+      var selectedNote = chooseNote(noteOrder);
+
+      while (sentNotes.includes(selectedNote.note.pitch)) {
+        Trace("WHILE: " + selectedNote.note.pitch);
+        selectedNote = chooseNote(noteOrder);
+      }
+
+      availableNotes.splice(selectedNote.index, 1);
 
       var noteToSend = new NoteOn();
-      noteToSend.pitch = selectedNote.pitch;
-      sentNotes.push(noteToSend.pitch);
+      noteToSend.pitch = selectedNote.note.pitch;
+      sentNotes.push(selectedNote.note.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
       //Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
 
@@ -283,6 +291,8 @@ function sendNote(nextBeat, randomDelay) {
           (nextBeat + noteLength + randomLength + randomDelay)
       );
     }
+    Trace("SENT: " + sentNotes.sort((a, b) => a - b));
+    Trace(sentNotes.length === new Set(sentNotes).size);
   }
 
   //Trace("NOTES SENT: " + sentNotes + "**********");
@@ -299,23 +309,30 @@ function getAndRemoveRandomItem(arr, noteOrder, currentPosition) {
 //-----------------------------------------------------------------------------
 var noteOrders = ["up", "down", "random"];
 
-function chooseNote(noteOrder, step) {
+function chooseNote(noteOrder) {
+  // if (availableNotes.length === 0) {
+  //   availableNotes = [...activeNotes];
+  // }
   if (availableNotes.length === 0) {
+    Trace("WAS ZERO");
     availableNotes = [...activeNotes];
   }
   var order = noteOrders[noteOrder];
   var length = availableNotes.length;
-  if (order == "up") {
-    var index = step % length;
-    return availableNotes.splice(0, 1)[0];
+  if (order === "up") {
+    //var index = step % length;
+    return { note: availableNotes[0], index: 0 };
   }
-  if (order == "down") {
-    var index = Math.abs((step % length) - (length - 1));
-    return availableNotes.splice(availableNotes.length - 1, 1)[0];
+  if (order === "down") {
+    //var index = Math.abs((step % length) - (length - 1));
+    return {
+      note: availableNotes[availableNotes.length - 1],
+      index: availableNotes.length - 1,
+    };
   }
-  if (order == "random") {
+  if (order === "random") {
     var index = Math.floor(Math.random() * length);
-    return availableNotes.splice(index, 1)[0];
+    return { note: availableNotes[index], index: index };
   } else {
     return 0;
   }
