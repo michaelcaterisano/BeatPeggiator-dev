@@ -1,10 +1,10 @@
 ### BeatPeggiator 2.0. A scripter plugin for Logic Pro.
 
-BeatPeggiator is under active development. Feel free to reach out with feature requests and bug reports.
+BeatPeggiator is under active development. Feel free to reach out with feature requests and bug reports at michaelcaterisano.com.
 
 #### Installation:
 
-Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file `BeatPeggiator.js`, then hit `Run Script`. Don't forget to hit `Run Script`! Otherwise the code will not run. Close the editor and choose "Save as" from the Scripter dropdown menu.
+Open Logic Pro and create a new track. Add the Scripter plugin to the track. Open Scripter, and click the "Open Script in Editor" button. Delete the code, then paste in the code from the file [Beatpeggiator.js](https://github.com/michaelcaterisano/BeatPeggiator/blob/master/BeatPeggiator.js), then hit `Run Script`. Don't forget to hit `Run Script` (otherwise the code will not run)! Otherwise the code will not run. Close the Editor, then choose "Save as" from the Scripter dropdown menu name it whatever you like. Now BeatPeggiator will be available as a preset in the Scripter plugin in all your Logic projects.
 
 #### Description:
 
