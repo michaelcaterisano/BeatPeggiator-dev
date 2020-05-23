@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// BeatPeggiator 2.0
+// commit (dev) : fix duplicate notes
 //-----------------------------------------------------------------------------
 /*	
 		Held notes are tracked in a global array in the HandleMIDI() callback.
@@ -236,6 +236,8 @@ function sendNote(nextBeat, randomDelay) {
   var division = GetParameter("Beat Division");
   var noteOrder = GetParameter("Note Order");
   var noteLength = (GetParameter("Note Length") / 100) * (1 / division);
+  var minimumVelocity = GetParameter("Minimum Velocity");
+  var maximumVelocity = GetParameter("Maximum Velocity");
   var randomLength =
     Math.random() * ((GetParameter("Random Length") / 100) * (1 / division));
   sentNotes = [];
@@ -258,7 +260,7 @@ function sendNote(nextBeat, randomDelay) {
       var selectedNote = chooseNote(noteOrder);
 
       while (sentNotes.includes(selectedNote.note.pitch)) {
-        Trace("WHILE: " + selectedNote.note.pitch);
+        //Trace("WHILE: " + selectedNote.note.pitch);
         selectedNote = chooseNote(noteOrder);
       }
 
@@ -266,6 +268,7 @@ function sendNote(nextBeat, randomDelay) {
 
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.note.pitch;
+      noteToSend.velocity = getRandomInRange(minimumVelocity, maximumVelocity);
       sentNotes.push(selectedNote.note.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
       //Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
@@ -285,14 +288,16 @@ function sendNote(nextBeat, randomDelay) {
       Trace(
         "NOTE: " +
           noteToSend.pitch +
+          "VEL: " +
+          noteToSend.velocity /*+
           " ON: " +
           (nextBeat + randomDelay) +
           " OFF: " +
-          (nextBeat + noteLength + randomLength + randomDelay)
+          (nextBeat + noteLength + randomLength + randomDelay)*/
       );
     }
-    Trace("SENT: " + sentNotes.sort((a, b) => a - b));
-    Trace(sentNotes.length === new Set(sentNotes).size);
+    //Trace("SENT: " + sentNotes.sort((a, b) => a - b));
+    //Trace(sentNotes.length === new Set(sentNotes).size);
   }
 
   //Trace("NOTES SENT: " + sentNotes + "**********");
@@ -307,6 +312,11 @@ function getAndRemoveRandomItem(arr, noteOrder, currentPosition) {
 }
 
 //-----------------------------------------------------------------------------
+function getRandomInRange(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+//-----------------------------------------------------------------------------
 var noteOrders = ["up", "down", "random"];
 
 function chooseNote(noteOrder) {
@@ -314,7 +324,7 @@ function chooseNote(noteOrder) {
   //   availableNotes = [...activeNotes];
   // }
   if (availableNotes.length === 0) {
-    Trace("WAS ZERO");
+    //Trace("WAS ZERO");
     availableNotes = [...activeNotes];
   }
   var order = noteOrders[noteOrder];
@@ -450,15 +460,31 @@ var PluginParameters = [
     numberOfSteps: 15,
     defaultValue: 1,
   },
+  {
+    name: "Minimum Velocity",
+    type: "lin",
+    minValue: 1,
+    maxValue: 127,
+    numberOfSteps: 126,
+    defaultValue: 50,
+  },
+  {
+    name: "Maximum Velocity",
+    type: "lin",
+    minValue: 1,
+    maxValue: 127,
+    numberOfSteps: 126,
+    defaultValue: 100,
+  },
 
   {
     name: "Note Length",
     unit: "%",
     type: "linear",
     minValue: 1,
-    maxValue: 200,
+    maxValue: 1000,
     defaultValue: 100.0,
-    numberOfSteps: 199,
+    numberOfSteps: 1000,
   },
 
   {
@@ -466,8 +492,8 @@ var PluginParameters = [
     unit: "%",
     type: "linear",
     minValue: 0,
-    maxValue: 200,
-    numberOfSteps: 200,
+    maxValue: 1000,
+    numberOfSteps: 1000,
     defaultValue: 0,
   },
 
