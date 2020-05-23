@@ -1,9 +1,7 @@
 //-----------------------------------------------------------------------------
-// commit (dev) : fix duplicate notes
 //-----------------------------------------------------------------------------
 /*	
-		Held notes are tracked in a global array in the HandleMIDI() callback.
-		Notes are chosen and played back during the ProcessMIDI() callback.
+
 */
 
 var NeedsTimingInfo = true;
@@ -19,7 +17,6 @@ var firstTime = true;
 var prevDenominator = null;
 var availableNotes = [];
 var sentNotes = [];
-//var manualActiveNotes = [];
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -37,10 +34,12 @@ function HandleMIDI(event) {
     }
   }
 
+  // reset values when activeNotes array is empty
   if (activeNotes.length === 0) {
     Reset();
   }
 
+  // sort activeNotes array
   activeNotes.sort(sortByPitchAscending);
 }
 
@@ -85,8 +84,6 @@ function ProcessMIDI() {
     // calculate new positions if new beat
     if (newBeat) {
       Trace("NEW BEAT/////////////////////");
-      //prevBeatPositions = beatPositions;
-      //manualActiveNotes = [...activeNotes];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
@@ -162,7 +159,6 @@ function Reset() {
   //Trace("RESET///////////");
   activeNotes = [];
   availableNotes = [];
-
   currentPosition = 0;
   beatMap = [];
   delays = [];
@@ -170,8 +166,6 @@ function Reset() {
   newBeat = true;
   firstTime = true;
   prevBeat = null;
-
-  //manualActiveNotes = [];
 }
 
 //-----------------------------------------------------------------------------
@@ -183,13 +177,10 @@ function getBeatPositions(nextBeat) {
   var firstBeat = true;
   positions = delays.map((delay) => {
     if (firstTime) {
-      prevBeat = setPrevBeat();
-      //Trace("step 1 prevBeat: " + prevBeat);
-      //Trace("called on: " + musicInfo.blockStartBeat);
+      prevBeat = getPrevBeat();
       return prevBeat + delay;
     } else if (!firstTime) {
       if (firstBeat) {
-        //Trace("step 2 " + prevBeat);
         prevBeat = prevBeat + denominator;
         currentBeat = prevBeat;
         firstBeat = false;
@@ -214,17 +205,15 @@ function getDenominator() {
 }
 
 //-----------------------------------------------------------------------------
-function setPrevBeat() {
+function getPrevBeat() {
   var musicInfo = GetTimingInfo();
 
   if (
     musicInfo.cycling &&
     Math.round(musicInfo.blockStartBeat) === musicInfo.rightCycleBeat
   ) {
-    //Trace("setPrevBeat END CYCLE/////");
     return musicInfo.leftCycleBeat;
   } else {
-    //Trace("setPrevBeat NORMAL/////");
     return Math.ceil(musicInfo.blockStartBeat);
   }
 }
@@ -246,8 +235,6 @@ function sendNote(nextBeat, randomDelay) {
     availableNotes = [...activeNotes];
   }
 
-  //Trace("AVAILABLE: " + availableNotes.map((note) => note.pitch));
-
   if (availableNotes.length !== 0) {
     var simultaneousNotes = GetParameter("Simultaneous Notes");
     var iterations =
@@ -255,12 +242,9 @@ function sendNote(nextBeat, randomDelay) {
         ? activeNotes.length
         : simultaneousNotes;
     for (var i = 0; i < iterations; i++) {
-      //var selectedNote = getAndRemoveRandomItem(availableNotes);
-      //var step = Math.floor(nextBeat / (1 / division) - division);
       var selectedNote = chooseNote(noteOrder);
 
       while (sentNotes.includes(selectedNote.note.pitch)) {
-        //Trace("WHILE: " + selectedNote.note.pitch);
         selectedNote = chooseNote(noteOrder);
       }
 
@@ -271,12 +255,7 @@ function sendNote(nextBeat, randomDelay) {
       noteToSend.velocity = getRandomInRange(minimumVelocity, maximumVelocity);
       sentNotes.push(selectedNote.note.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
-      //Trace("NOTE: " + selectedNote.pitch + " | BEAT: " + nextBeat.toFixed(2));
-
       noteOffToSend = new NoteOff(noteToSend);
-      // noteOffToSend.sendAfterMilliseconds(
-      //   (noteLength + randomLength) * (60000 / info.tempo)
-      // );
 
       var noteOffBeat = nextBeat + noteLength + randomLength + randomDelay;
       if (musicInfo.cycling && noteOffBeat >= musicInfo.rightCycleBeat) {
@@ -296,11 +275,7 @@ function sendNote(nextBeat, randomDelay) {
           (nextBeat + noteLength + randomLength + randomDelay)*/
       );
     }
-    //Trace("SENT: " + sentNotes.sort((a, b) => a - b));
-    //Trace(sentNotes.length === new Set(sentNotes).size);
   }
-
-  //Trace("NOTES SENT: " + sentNotes + "**********");
 }
 
 //-----------------------------------------------------------------------------
@@ -320,21 +295,15 @@ function getRandomInRange(min, max) {
 var noteOrders = ["up", "down", "random"];
 
 function chooseNote(noteOrder) {
-  // if (availableNotes.length === 0) {
-  //   availableNotes = [...activeNotes];
-  // }
   if (availableNotes.length === 0) {
-    //Trace("WAS ZERO");
     availableNotes = [...activeNotes];
   }
   var order = noteOrders[noteOrder];
   var length = availableNotes.length;
   if (order === "up") {
-    //var index = step % length;
     return { note: availableNotes[0], index: 0 };
   }
   if (order === "down") {
-    //var index = Math.abs((step % length) - (length - 1));
     return {
       note: availableNotes[availableNotes.length - 1],
       index: availableNotes.length - 1,
@@ -375,8 +344,6 @@ function generateBeatMap(numNotes, beatDivision) {
 }
 
 //-----------------------------------------------------------------------------
-// returns array of note delays in milliseconds,
-//e.g. [0, 255, 255, 255] for beatmap [1, 1, 1, 1] at 60bpm
 function generateNoteDelays(beatMap, offsetAmount) {
   var output = [];
 
@@ -390,6 +357,8 @@ function generateNoteDelays(beatMap, offsetAmount) {
 //-----------------------------------------------------------------------------
 function ParameterChanged(param, value) {
   var musicInfo = GetTimingInfo();
+
+  // Enforce Beat Division >= Number Of Notes
   if (param === 0) {
     // Beat Division
     if (value < GetParameter("Number Of Notes")) {
@@ -411,9 +380,18 @@ function ParameterChanged(param, value) {
     }
   }
 
-  // if (param === 2) {
-  //   // Beats
-  // }
+  // Enforce Maximum Velocity >= Minimum Velocity
+  if (param === 5) {
+    if (value > GetParameter("Maximum Velocity")) {
+      SetParameter(6, value);
+    }
+  }
+
+  if (param === 6) {
+    if (value < GetParameter("Minimum Velocity")) {
+      SetParameter(5, value);
+    }
+  }
 }
 //-----------------------------------------------------------------------------
 var PluginParameters = [
