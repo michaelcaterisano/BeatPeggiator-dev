@@ -17,6 +17,7 @@ var firstTime = true;
 var prevDenominator = null;
 var availableNotes = [];
 var sentNotes = [];
+var sentThisBeat = [];
 
 function HandleMIDI(event) {
   var musicInfo = GetTimingInfo();
@@ -84,6 +85,8 @@ function ProcessMIDI() {
     // calculate new positions if new beat
     if (newBeat) {
       Trace("NEW BEAT/////////////////////");
+
+      sentThisBeat = [];
       beatMap = generateBeatMap(numBeats, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
@@ -99,11 +102,27 @@ function ProcessMIDI() {
         now: musicInfo.blockStartBeat,
         beatPositions: beatPositions,
       };
-
-      Trace(JSON.stringify(newBeatState));
     }
 
     var nextBeat = beatPositions[currentPosition];
+
+    if (
+      (nextBeat >= musicInfo.blockStartBeat && nextBeat < lookAheadEnd) ===
+      false
+    ) {
+      oldNext = nextBeat;
+      nextBeat = nextBeat + (lookAheadEnd - musicInfo.blockStartBeat) / 2;
+      Trace(
+        "oldNext: " +
+          oldNext +
+          " nextBeat: " +
+          nextBeat +
+          " | blockStart: " +
+          musicInfo.blockStartBeat +
+          " | blockEnd: " +
+          lookAheadEnd
+      );
+    }
 
     // when cycling, find the beats that wrap around the last buffer
     if (musicInfo.cycling && lookAheadEnd >= musicInfo.rightCycleBeat) {
@@ -134,6 +153,7 @@ function ProcessMIDI() {
       }
 
       sendNote(nextBeat, randomDelay);
+
       if (numBeats === 1) {
         newBeat = true;
         break;
@@ -156,7 +176,7 @@ function ProcessMIDI() {
 }
 //-----------------------------------------------------------------------------
 function Reset() {
-  //Trace("RESET///////////");
+  Trace("RESET///////////");
   activeNotes = [];
   availableNotes = [];
   currentPosition = 0;
@@ -253,7 +273,8 @@ function sendNote(nextBeat, randomDelay) {
       var noteToSend = new NoteOn();
       noteToSend.pitch = selectedNote.note.pitch;
       noteToSend.velocity = getRandomInRange(minimumVelocity, maximumVelocity);
-      sentNotes.push(selectedNote.note.pitch);
+      sentNotes.push(noteToSend.pitch);
+      sentThisBeat.push(noteToSend.pitch);
       noteToSend.sendAtBeat(nextBeat + randomDelay);
       noteOffToSend = new NoteOff(noteToSend);
 
@@ -263,19 +284,9 @@ function sendNote(nextBeat, randomDelay) {
       } else {
         noteOffToSend.sendAtBeat(noteOffBeat);
       }
-
-      Trace(
-        "NOTE: " +
-          noteToSend.pitch +
-          "VEL: " +
-          noteToSend.velocity /*+
-          " ON: " +
-          (nextBeat + randomDelay) +
-          " OFF: " +
-          (nextBeat + noteLength + randomLength + randomDelay)*/
-      );
     }
   }
+  Trace(sentThisBeat.length);
 }
 
 //-----------------------------------------------------------------------------
