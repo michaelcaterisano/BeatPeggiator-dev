@@ -33,6 +33,8 @@ function HandleMIDI(event) {
         break;
       }
     }
+  } else {
+    event.send();
   }
 
   // reset values when activeNotes array is empty
@@ -55,6 +57,12 @@ function sortByPitchAscending(a, b) {
 var wasPlaying = false;
 
 function ProcessMIDI() {
+  var cc = new ControlChange();
+  cc.number = 20;
+  cc.value = GetParameter("CC20");
+  cc.send();
+  cc.trace();
+
   // Get timing information from the host application
   var musicInfo = GetTimingInfo();
 
@@ -112,16 +120,16 @@ function ProcessMIDI() {
     ) {
       oldNext = nextBeat;
       nextBeat = nextBeat + (lookAheadEnd - musicInfo.blockStartBeat) / 2;
-      Trace(
-        "oldNext: " +
-          oldNext +
-          " nextBeat: " +
-          nextBeat +
-          " | blockStart: " +
-          musicInfo.blockStartBeat +
-          " | blockEnd: " +
-          lookAheadEnd
-      );
+      // Trace(
+      //   "oldNext: " +
+      //     oldNext +
+      //     " nextBeat: " +
+      //     nextBeat +
+      //     " | blockStart: " +
+      //     musicInfo.blockStartBeat +
+      //     " | blockEnd: " +
+      //     lookAheadEnd
+      // );
     }
 
     // when cycling, find the beats that wrap around the last buffer
@@ -286,7 +294,7 @@ function sendNote(nextBeat, randomDelay) {
       }
     }
   }
-  Trace(sentThisBeat.length);
+  // Trace(sentThisBeat.length);
 }
 
 //-----------------------------------------------------------------------------
@@ -493,6 +501,14 @@ var PluginParameters = [
     minValue: 0,
     maxValue: 200,
     numberOfSteps: 200,
+    defaultValue: 0,
+  },
+  {
+    name: "CC20",
+    type: "linear",
+    minValue: 0,
+    maxValue: 127,
+    numberOfSteps: 127,
     defaultValue: 0,
   },
 ];
