@@ -55,13 +55,13 @@ function ProcessMIDI() {
 
   if (activeNotes.length != 0) {
     var division = GetParameter('Beat Division');
-    var numBeats = GetParameter('Number Of Notes');
+    var numNotes = GetParameter('Number Of Notes');
     var randomDelay =
       Math.random() * ((GetParameter('Random Delay') / 100) * (1 / division));
     var lookAheadEnd = musicInfo.blockEndBeat;
 
     if (newBeat) {
-      beatMap = generateBeatMap(numBeats, division);
+      beatMap = generateBeatMap(numNotes, division);
       delays = generateNoteDelays(beatMap, 1 / division);
       beatPositions = getBeatPositions();
       newBeat = false;
@@ -96,7 +96,7 @@ function ProcessMIDI() {
 
       sendNote(nextBeat, randomDelay);
 
-      if (numBeats === 1) {
+      if (numNotes === 1) {
         newBeat = true;
         break;
       }
