@@ -54,15 +54,17 @@ function ProcessMIDI() {
   wasPlaying = musicInfo.playing;
 
   if (activeNotes.length != 0) {
-    var division = GetParameter('Beat Division');
+    var beatDivision = GetParameter('Beat Division');
     var numNotes = GetParameter('Number Of Notes');
     var randomDelay =
-      Math.random() * ((GetParameter('Random Delay') / 100) * (1 / division));
+      Math.random() *
+      ((GetParameter('Random Delay') / 100) * (1 / beatDivision));
     var lookAheadEnd = musicInfo.blockEndBeat;
 
     if (newBeat) {
-      beatMap = generateBeatMap(numNotes, division);
-      delays = generateNoteDelays(beatMap, 1 / division);
+      Trace('NEW BEAT////////////');
+      beatMap = generateBeatMap(numNotes, beatDivision);
+      delays = generateNoteDelays(beatMap, 1 / beatDivision);
       beatPositions = getBeatPositions();
       newBeat = false;
       firstTime = false;
@@ -116,13 +118,14 @@ function ProcessMIDI() {
 function sendNote(nextBeat, randomDelay) {
   Trace(nextBeat);
   var musicInfo = GetTimingInfo();
-  var division = GetParameter('Beat Division');
+  var beatDivision = GetParameter('Beat Division');
   var noteOrder = GetParameter('Note Order');
-  var noteLength = (GetParameter('Note Length') / 100) * (1 / division);
+  var noteLength = (GetParameter('Note Length') / 100) * (1 / beatDivision);
   var minimumVelocity = GetParameter('Minimum Velocity');
   var maximumVelocity = GetParameter('Maximum Velocity');
   var randomLength =
-    Math.random() * ((GetParameter('Random Length') / 100) * (1 / division));
+    Math.random() *
+    ((GetParameter('Random Length') / 100) * (1 / beatDivision));
   sentNotes = [];
 
   if (availableNotes.length === 0) {
