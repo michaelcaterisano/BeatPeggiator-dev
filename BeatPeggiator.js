@@ -69,10 +69,6 @@ function ProcessMIDI() {
       newBeat = false;
       firstTime = false;
       prevDenominator = GetParameter('Beats');
-
-      Trace(
-        `blockStart: ${musicInfo.blockStartBeat} | currBeat: ${currentBeat} | prevBeat: ${prevBeat} | beatMap:  ${beatMap} | noteDelays:  ${delays} | beatPositions:  ${beatPositions}`
-      );
     }
 
     var nextBeat = beatPositions[currentPosition];
@@ -120,6 +116,7 @@ function ProcessMIDI() {
 }
 //-----------------------------------------------------------------------------
 function sendNote(nextBeat, randomDelay) {
+  Trace(nextBeat);
   var musicInfo = GetTimingInfo();
   var beatDivision = GetParameter('Beat Division');
   var noteOrder = GetParameter('Note Order');
